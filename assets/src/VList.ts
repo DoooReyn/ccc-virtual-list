@@ -16,10 +16,10 @@ import {
     Tween,
     Size,
     Label,
-    Sprite,
     Rect,
     EventMouse,
     UIOpacity,
+    Event,
 } from "cc";
 import VItem from "./VItem";
 const { ccclass, property } = _decorator;
@@ -42,15 +42,6 @@ export const LIST_LAYOUT = Enum({
     GRID: 1,
 });
 
-const LAST_POS = new Vec2();
-const DROP_POS = new Vec2();
-const LEAVE_POS = new Vec2();
-const AUTO_ANIMATE_DELTA = 0.1;
-const SCROLL_DELTA = 300; // 惯性滚动触发阈值【时间】
-const SCROLL_SPAN = 50; // 惯性滚动触发阈值【距离】
-let DROP_AT = 0;
-let LEAVE_AT = 0;
-
 /** 虚拟子项 */
 class VirtualItem {
     /** 子项索引 */
@@ -65,6 +56,7 @@ class VirtualItem {
     public y: number = 0;
     /** 虚拟列表 */
     public list: VList = null;
+    /** 矩形边界 */
     private _rect: Rect = new Rect();
     /**
      * 检查边界
@@ -97,6 +89,7 @@ class VirtualItem {
     }
 }
 
+/** 虚拟子项对象池 */
 class VirtualItemFactory {
     private static _inst: VirtualItemFactory = null;
     public static get inst() {
@@ -114,6 +107,7 @@ class VirtualItemFactory {
     }
 }
 
+/** 实际子项对象池 */
 class RealItemFactory {
     private _template: Node;
     private _pool: Node[] = [];
@@ -134,37 +128,67 @@ class RealItemFactory {
 
 @ccclass("VList")
 export class VList extends Component {
+    /** 容器节点 */
     private _container: Node = null;
+    /** 容器变化组件 */
     private _containerTransform: UITransform = null;
+    /** 容器最小宽度 */
     private _minWidth: number = 0;
+    /** 容器最小高度 */
     private _minHeight: number = 0;
+    /** 正在滚动中 */
     private _scrolling: boolean = false;
+    /** 滚动时间（仅用于计算） */
     private _scrollDelta: number = 0;
+    /** 滚动距离（仅用于计算） */
     private _scrollOffset: Vec2 = new Vec2();
+    /** 数据源 */
     private _dataSource: any[] | null;
+    /** 容器起始位置 */
     private _startPos: Vec3 = null;
-    protected _vitems: VirtualItem[] = [];
+    /** 是否需要刷新状态 */
     private _dirty: boolean = false;
+    /** 虚拟子项列表 */
+    protected _vitems: VirtualItem[] = [];
+    /** 子项对象池 */
     protected _itemPool: RealItemFactory = new RealItemFactory();
+    /** 触摸落下计时点 */
+    private _dropAt: number = 0;
+    /** 触摸松开计时点 */
+    private _leaveAt: number = 0;
+    /** 上次记录的容器位置 */
+    private _lastPos: Vec2 = new Vec2();
+    /** 触摸落下位置 */
+    private _dropPos: Vec2 = new Vec2();
+    /** 触摸松开位置 */
+    private _leavePos: Vec2 = new Vec2();
 
     @property({ displayName: "滚动方向", type: LIST_DIRCTION, group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $direction = LIST_DIRCTION.VERTICAL;
-    @property({ displayName: "布局方式", type: LIST_LAYOUT, group: { id: "1", name: "基础参数", displayOrder: 2 } })
+    @property({ displayName: "布局方式", type: LIST_LAYOUT, group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $layout = LIST_LAYOUT.SINGLE;
-    @property({ displayName: "子项间距", type: CCInteger, group: { id: "1", name: "基础参数", displayOrder: 3 } })
+    @property({ displayName: "子项间距", type: CCInteger, group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $spacing = 0;
-    @property({ displayName: "滚动开关", group: { id: "2", name: "惯性", displayOrder: 1 } })
-    protected $inertia = false;
-    @property({ displayName: "滚动倍速", group: { id: "2", name: "惯性", displayOrder: 2 } })
-    protected $speed = 1;
-    @property({ displayName: "左", type: CCInteger, group: { id: "3", name: "边距", displayOrder: 1 } })
+    @property({ displayName: "左", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
     protected $paddingLeft = 0;
-    @property({ displayName: "右", type: CCInteger, group: { id: "3", name: "边距", displayOrder: 2 } })
+    @property({ displayName: "右", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
     protected $paddingRight = 0;
-    @property({ displayName: "上", type: CCInteger, group: { id: "3", name: "边距", displayOrder: 3 } })
+    @property({ displayName: "上", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
     protected $paddingTop = 0;
-    @property({ displayName: "下", type: CCInteger, group: { id: "3", name: "边距", displayOrder: 4 } })
+    @property({ displayName: "下", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
     protected $paddingBottom = 0;
+    @property({ displayName: "滚动开关", group: { id: "3", name: "惯性", displayOrder: 3 } })
+    protected $inertia = false;
+    @property({ displayName: "滚动倍速", group: { id: "3", name: "惯性", displayOrder: 3 } })
+    protected $speed = 1;
+    @property({ displayName: "滚动阈值（毫秒）", group: { id: "3", name: "惯性", displayOrder: 3 } })
+    protected $scrollDelta = 300;
+    @property({ displayName: "滚动阈值（像素）", group: { id: "3", name: "惯性", displayOrder: 3 } })
+    protected $scrollSpan = 60;
+    @property({ displayName: "回弹开关", group: { id: "4", name: "回弹", displayOrder: 4 } })
+    protected $bouncable = true;
+    @property({ displayName: "回弹时间", group: { id: "4", name: "回弹", displayOrder: 4 } })
+    protected $bounceTime = 0.1;
 
     protected onLoad(): void {
         // 计算容器最小尺寸
@@ -301,16 +325,27 @@ export class VList extends Component {
     }
 
     /**
+     * 如果目标是自身则停止传递事件
+     * @param event 事件
+     */
+    protected stopPropagationIfTargetIsMe(event: Event): void {
+        if (event.eventPhase === Event.AT_TARGET && event.target === this.node) {
+            event.propagationStopped = true;
+        }
+    }
+
+    /**
      * 落下
      * @param e 触摸事件
      */
     private onTouchDrop(e: EventTouch) {
         __TEST__ && console.log("==drop==");
-        DROP_AT = Date.now();
-        DROP_POS.x = e.getLocationX();
-        DROP_POS.y = e.getLocationY();
-        LAST_POS.x = this._container.position.x;
-        LAST_POS.y = this._container.position.y;
+        this._dropAt = Date.now();
+        this._dropPos.x = e.getLocationX();
+        this._dropPos.y = e.getLocationY();
+        this._lastPos.x = this._container.position.x;
+        this._lastPos.y = this._container.position.y;
+        this.stopPropagationIfTargetIsMe(e);
     }
 
     /**
@@ -323,14 +358,17 @@ export class VList extends Component {
         const delta = e.getDelta().multiplyScalar(0.85);
         if (delta.length() != 0) {
             if (this.horizontal) {
-                LAST_POS.x += delta.x;
+                this._lastPos.x += delta.x;
                 this._container.setPosition(this._container.position.x + delta.x, this._container.position.y);
             } else {
-                LAST_POS.y += delta.y;
+                this._lastPos.y += delta.y;
                 this._container.setPosition(this._container.position.x, this._container.position.y + delta.y);
             }
             this._dirty = true;
+            this.unschedule(this.checkBounce);
+            this.scheduleOnce(this.checkBounce, 0.5);
         }
+        this.stopPropagationIfTargetIsMe(e);
     }
 
     /**
@@ -349,6 +387,7 @@ export class VList extends Component {
             this._dirty = true;
             this.updateBounds();
         }
+        this.stopPropagationIfTargetIsMe(e);
     }
 
     /**
@@ -359,18 +398,19 @@ export class VList extends Component {
         __TEST__ && console.log("==leave==");
         if (this.checkBounce()) return;
         if (this.$inertia) {
-            LEAVE_AT = Date.now();
-            LEAVE_POS.x = e.getLocationX();
-            LEAVE_POS.y = e.getLocationY();
-            const delta = LEAVE_AT - DROP_AT;
-            if (this.horizontal && Math.abs(LEAVE_POS.x - DROP_POS.x) < SCROLL_SPAN) return;
-            if (this.vertical && Math.abs(LEAVE_POS.y - DROP_POS.y) < SCROLL_SPAN) return;
-            if (delta > SCROLL_DELTA) return;
+            this._leaveAt = Date.now();
+            this._leavePos.x = e.getLocationX();
+            this._leavePos.y = e.getLocationY();
+            const delta = this._leaveAt - this._dropAt;
+            if (this.horizontal && Math.abs(this._leavePos.x - this._dropPos.x) < this.$scrollSpan) return;
+            if (this.vertical && Math.abs(this._leavePos.y - this._dropPos.y) < this.$scrollSpan) return;
+            if (delta > this.$scrollDelta) return;
             this._scrolling = true;
             this._scrollDelta = delta / 1000;
-            this._scrollOffset.x = LEAVE_POS.x - DROP_POS.x;
-            this._scrollOffset.y = LEAVE_POS.y - DROP_POS.y;
+            this._scrollOffset.x = this._leavePos.x - this._dropPos.x;
+            this._scrollOffset.y = this._leavePos.y - this._dropPos.y;
         }
+        this.stopPropagationIfTargetIsMe(e);
     }
 
     /**
@@ -380,6 +420,11 @@ export class VList extends Component {
         return this._containerTransform.contentSize;
     }
 
+    /** 自动回弹时间 */
+    private get bouncableTime() {
+        return this.$bouncable ? this.$bounceTime : 0;
+    }
+
     /**
      * 检查回弹
      * @return
@@ -387,18 +432,18 @@ export class VList extends Component {
     private checkBounce() {
         if (this.horizontal) {
             if (this._container.position.x > this._startPos.x) {
-                this.scrollToStart(AUTO_ANIMATE_DELTA);
+                this.scrollToStart(this.bouncableTime);
                 return true;
             } else if (this._container.position.x < -this._containerTransform.width + this.minWidth / 2) {
-                this.scrollToEnd(AUTO_ANIMATE_DELTA);
+                this.scrollToEnd(this.bouncableTime);
                 return true;
             }
         } else {
             if (this._container.position.y < this._startPos.y) {
-                this.scrollToStart(AUTO_ANIMATE_DELTA);
+                this.scrollToStart(this.bouncableTime);
                 return true;
             } else if (this._container.position.y > this._containerTransform.height - this.minHeight / 2) {
-                this.scrollToEnd(AUTO_ANIMATE_DELTA);
+                this.scrollToEnd(this.bouncableTime);
                 return true;
             }
         }
@@ -501,10 +546,6 @@ export class VList extends Component {
         }
     }
 
-    private onItemClicked(e: any) {
-        console.log(e);
-    }
-
     /**
      * 获取指定索引处的子项
      * @param index 索引
@@ -516,7 +557,6 @@ export class VList extends Component {
         if (!item && force) {
             item = this.appendRealItem();
             item.getChildByName("Label").getComponent(Label).string = this._dataSource[index].toString();
-            item.on("click", this.onItemClicked, this);
         }
         if (item) {
             item.name = name;
@@ -649,9 +689,7 @@ export class VList extends Component {
             .start();
     }
 
-    /**
-     * 更新边界与回弹
-     */
+    /** 更新边界与回弹 */
     private updateBounds() {
         this.checkBounce();
         this.checkVirtualBounds();
