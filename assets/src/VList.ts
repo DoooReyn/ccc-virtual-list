@@ -2,7 +2,6 @@ import {
     _decorator,
     Component,
     Node,
-    Prefab,
     instantiate,
     CCInteger,
     Mask,
@@ -15,6 +14,9 @@ import {
     Vec3,
     tween,
     Tween,
+    Size,
+    Label,
+    Sprite,
 } from "cc";
 const { ccclass, property } = _decorator;
 
@@ -41,10 +43,25 @@ export const LIST_LAYOUT = Enum({
 const LAST_POS = new Vec2();
 const DROP_POS = new Vec2();
 const LEAVE_POS = new Vec2();
-const AUTO_ANIMATE_DELTA = 0.03;
-const SCROLL_DELTA = 200; // 滚动阈值
+const AUTO_ANIMATE_DELTA = 0.1;
+const SCROLL_DELTA = 300; // 惯性滚动触发阈值【时间】
+const SCROLL_SPAN = 50; // 惯性滚动触发阈值【距离】
 let DROP_AT = 0;
 let LEAVE_AT = 0;
+
+/** 虚拟子项 */
+class VirtualItem {
+    /** 子项索引 */
+    public i: number = 0;
+    /** 子项宽度 */
+    public w: number = 0;
+    /** 子项高度 */
+    public h: number = 0;
+    /** 子项横坐标 */
+    public x: number = 0;
+    /** 子项纵坐标 */
+    public y: number = 0;
+}
 
 @ccclass("VList")
 export class VList extends Component {
@@ -52,19 +69,29 @@ export class VList extends Component {
     private _containerTransform: UITransform = null;
     private _minWidth: number = 0;
     private _minHeight: number = 0;
+    private _scrolling: boolean = false;
+    private _scrollDelta: number = 0;
+    private _scrollOffset: Vec2 = new Vec2();
     private _dataSource: any[] | null;
     private _startPos: Vec3 = null;
+    protected _vitems: VirtualItem[] = [];
 
-    @property({ displayName: "左", type: CCInteger, group: { name: "边距", displayOrder: 1 } })
-    protected $paddingLeft = 0;
-    @property({ displayName: "右", type: CCInteger, group: { name: "边距", displayOrder: 2 } })
-    protected $paddingRight = 0;
-    @property({ displayName: "上", type: CCInteger, group: { name: "边距", displayOrder: 3 } })
-    protected $paddingTop = 0;
-    @property({ displayName: "下", type: CCInteger, group: { name: "边距", displayOrder: 4 } })
-    protected $paddingBottom = 0;
-    @property({ displayName: "滚动方向", type: LIST_DIRCTION })
+    @property({ displayName: "滚动方向", type: LIST_DIRCTION, group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $direction = LIST_DIRCTION.VERTICAL;
+    @property({ displayName: "布局方式", type: LIST_LAYOUT, group: { id: "1", name: "基础参数", displayOrder: 2 } })
+    protected $layout = LIST_LAYOUT.SINGLE_LINE;
+    @property({ displayName: "子项间距", type: CCInteger, group: { id: "1", name: "基础参数", displayOrder: 3 } })
+    protected $spacing = 0;
+    @property({ displayName: "惯性滚动", group: { id: "1", name: "基础参数", displayOrder: 4 } })
+    protected $inertia = false;
+    @property({ displayName: "左", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 1 } })
+    protected $paddingLeft = 0;
+    @property({ displayName: "右", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
+    protected $paddingRight = 0;
+    @property({ displayName: "上", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 3 } })
+    protected $paddingTop = 0;
+    @property({ displayName: "下", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 4 } })
+    protected $paddingBottom = 0;
 
     protected onLoad(): void {
         console.log("==load==");
@@ -84,7 +111,7 @@ export class VList extends Component {
         maskT.setContentSize(mw, mh);
         maskC.type = Mask.Type.GRAPHICS_RECT;
         maskC.inverted = false;
-        maskC.enabled = false;
+        maskC.enabled = true;
 
         // 创建容器
         const containerN = new Node("container");
@@ -100,19 +127,7 @@ export class VList extends Component {
         this._startPos = pos.clone();
 
         if (__TEST__) {
-            const pos = this.$direction == LIST_DIRCTION.HORIZONTAL ? new Vec3(0, -mh / 2) : new Vec3(-mw / 2, -mh);
-            const containerG = containerN.addComponent(Graphics);
-            containerG.lineWidth = 2;
-            containerG.strokeColor = new Color(0, 255, 0);
-            containerG.fillColor = new Color(0, 0, 0, 50);
-            containerG.fillRect(pos.x, pos.y, mw, mh);
-            containerG.stroke();
-
-            const template = this.node.parent.getChildByName("Item");
-            const item = instantiate(template);
-            item.active = true;
-            containerN.addChild(item);
-
+            containerN.addComponent(Graphics);
             console.log(this);
         }
     }
@@ -133,10 +148,43 @@ export class VList extends Component {
 
     protected start(): void {
         console.log("==start==");
+        this.data = new Array(100).fill(0).map((_, i) => i + 1);
+        for (let i = 0; i < this._dataSource.length; i++) {
+            const item = this.appendItem();
+            const [width, height] = this.getItemSize(i);
+            item.setPosition(0, -height / 2 - height * i - this.$spacing * (i + 1));
+            item.getComponent(Sprite).color = new Color(Math.random() * 255, Math.random() * 255, Math.random() * 255);
+            item.getChildByName("Label").getComponent(Label).string = (i + 1).toString();
+        }
     }
 
+    private appendItem() {
+        const template = this.node.parent.getChildByName("Item");
+        const item = instantiate(template);
+        item.active = true;
+        this._container.addChild(item);
+        return item;
+    }
+
+    private drawBound() {
+        if (__TEST__) {
+            const { width, height } = this._containerTransform.contentSize;
+            const pos = this.$direction == LIST_DIRCTION.HORIZONTAL ? new Vec3(0, -width / 2) : new Vec3(-width / 2, -height);
+            const containerG = this._container.getComponent(Graphics);
+            containerG.clear();
+            containerG.lineWidth = 2;
+            containerG.strokeColor = new Color(255, 0, 0);
+            containerG.fillColor = new Color(0, 0, 0, 50);
+            containerG.fillRect(pos.x, pos.y, width, height);
+            containerG.stroke();
+        }
+    }
+
+    /**
+     * 落下
+     * @param e 触摸事件
+     */
     private onTouchDrop(e: EventTouch) {
-        console.log("==drop==");
         DROP_AT = Date.now();
         DROP_POS.x = e.getLocationX();
         DROP_POS.y = e.getLocationY();
@@ -144,8 +192,19 @@ export class VList extends Component {
         LAST_POS.y = this._container.position.y;
     }
 
+    /**
+     * 容器尺寸
+     */
+    private get contentSize() {
+        return this._containerTransform.contentSize;
+    }
+
+    /**
+     * 拖拽
+     * @param e 触摸事件
+     */
     private onTouchMove(e: EventTouch) {
-        console.log("==move==");
+        this.stopScroll();
         const delta = e.getDelta();
         if (this.$direction == LIST_DIRCTION.HORIZONTAL) {
             LAST_POS.x += delta.x;
@@ -156,37 +215,54 @@ export class VList extends Component {
         }
     }
 
+    /**
+     * 松开
+     * @param e 触摸事件
+     */
     private onTouchLeave(e: EventTouch) {
-        console.log("==leave==", this._container.position.toString());
+        console.log("--leave--", this._startPos.toString(), this._container.position.toString());
+        if (this.checkBounce()) return;
+        if (this.$inertia) {
+            LEAVE_AT = Date.now();
+            LEAVE_POS.x = e.getLocationX();
+            LEAVE_POS.y = e.getLocationY();
+            const delta = LEAVE_AT - DROP_AT;
+            if (this.$direction == LIST_DIRCTION.HORIZONTAL && Math.abs(LEAVE_POS.x - DROP_POS.x) < SCROLL_SPAN) return;
+            if (this.$direction == LIST_DIRCTION.VERTICAL && Math.abs(LEAVE_POS.y - DROP_POS.y) < SCROLL_SPAN) return;
+            if (delta > SCROLL_DELTA) return;
+            this._scrolling = true;
+            this._scrollDelta = delta / 1000;
+            this._scrollOffset.x = LEAVE_POS.x - DROP_POS.x;
+            this._scrollOffset.y = LEAVE_POS.y - DROP_POS.y;
+            console.log("惯性滚动开始", this._scrollDelta);
+        }
+    }
+
+    /**
+     * 检查回弹
+     * @return
+     */
+    private checkBounce() {
         if (this.$direction == LIST_DIRCTION.HORIZONTAL) {
             if (this._container.position.x <= this._startPos.x) {
                 this.scrollTo(this._startPos, AUTO_ANIMATE_DELTA);
-                return;
+                return true;
             } else if (this._container.position.x >= this._containerTransform.width - this.minWidth * 1.5) {
                 const pos = new Vec3(this._containerTransform.width - this.minWidth * 1.5, this._container.position.y);
                 this.scrollTo(pos, AUTO_ANIMATE_DELTA);
-                return;
+                return true;
             }
         } else {
-            if (this._container.position.y >= this._startPos.y) {
+            if (this._container.position.y < this._startPos.y) {
                 this.scrollTo(this._startPos, AUTO_ANIMATE_DELTA);
-                return;
-            } else if (this._container.position.y <= this._containerTransform.height - this.minHeight / 2) {
+                return true;
+            } else if (this._container.position.y > this._containerTransform.height - this.minHeight / 2) {
                 const pos = new Vec3(this._container.position.x, this._containerTransform.height - this.minHeight / 2);
                 this.scrollTo(pos, AUTO_ANIMATE_DELTA);
-                return;
+                return true;
             }
         }
-
-        LEAVE_AT = Date.now();
-        LEAVE_POS.x = e.getLocationX();
-        LEAVE_POS.y = e.getLocationY();
-        const span = LEAVE_AT - DROP_AT;
-        if (span < SCROLL_DELTA) {
-            // 动画
-        } else {
-            // 滚动
-        }
+        return false;
     }
 
     /** 最小宽度 */
@@ -219,6 +295,8 @@ export class VList extends Component {
             return;
         }
         this._dataSource = data;
+        this._containerTransform.setContentSize(this.calculateSize());
+        this.drawBound();
     }
 
     /**
@@ -247,7 +325,7 @@ export class VList extends Component {
      */
     public getItemSize(index: number): [number, number] {
         // @todo
-        return [0, 0];
+        return [1024, 120];
     }
 
     /**
@@ -273,13 +351,47 @@ export class VList extends Component {
      * @param start 开始索引
      * @param end 结束索引
      */
-    private removeSpan(start: number, end: number) {
+    private removeRange(start: number, end: number) {
         // @todo
+    }
+
+    /**
+     * 计算容器尺寸
+     * @returns
+     */
+    private calculateSize() {
+        let width = 0,
+            height = 0,
+            size: [number, number];
+        let hor = this.$direction == LIST_DIRCTION.HORIZONTAL;
+        let spacing = this.$spacing;
+        let count = this.count;
+        for (let i = 0; i < count; i++) {
+            size = this.getItemSize(i);
+            if (hor) {
+                width += size[0];
+            } else {
+                height += size[1];
+            }
+        }
+        if (count > 0) {
+            if (hor) {
+                width += count * spacing;
+            } else {
+                height += count * spacing;
+            }
+        }
+        width = Math.max(width, this._minWidth);
+        height = Math.max(height, this._minHeight);
+        return new Size(width, height);
     }
 
     /** 停止滚动 */
     public stopScroll() {
         Tween.stopAllByTarget(this._container);
+        this._scrolling = false;
+        this._scrollDelta = 0;
+        this._scrollOffset.set(0, 0);
     }
 
     /**
@@ -339,6 +451,25 @@ export class VList extends Component {
     public scrollToBottom(delta: number = 0) {
         if (this.$direction == LIST_DIRCTION.VERTICAL) {
             this.scrollToIndex(this.count - 1, delta);
+        }
+    }
+
+    protected lateUpdate(dt: number): void {
+        if (this._scrolling) {
+            if (this._scrollDelta <= 0) {
+                this.stopScroll();
+                this.checkBounce();
+                return;
+            }
+            this._scrollDelta -= dt * 0.1;
+            const speedX = this._scrollOffset.x * this._scrollDelta * 2;
+            const speedY = this._scrollOffset.y * this._scrollDelta * 2;
+            const pos = this._container.position;
+            if (this.$direction == LIST_DIRCTION.HORIZONTAL) {
+                this._container.setPosition(pos.x + speedX, pos.y);
+            } else {
+                this._container.setPosition(pos.x, pos.y + speedY);
+            }
         }
     }
 }
