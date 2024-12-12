@@ -19,6 +19,7 @@ import {
     Sprite,
     Rect,
     EventMouse,
+    UIOpacity,
 } from "cc";
 import VItem from "./VItem";
 const { ccclass, property } = _decorator;
@@ -35,10 +36,10 @@ export const LIST_DIRCTION = Enum({
 
 /** 列表布局方式 */
 export const LIST_LAYOUT = Enum({
-    /** 单行单列 */
-    SINGLE_LINE: 0,
-    /** 多行多列 */
-    MULTI_LINE: 1,
+    /** 单个 */
+    SINGLE: 0,
+    /** 网格 */
+    GRID: 1,
 });
 
 const LAST_POS = new Vec2();
@@ -149,7 +150,7 @@ export class VList extends Component {
     @property({ displayName: "滚动方向", type: LIST_DIRCTION, group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $direction = LIST_DIRCTION.VERTICAL;
     @property({ displayName: "布局方式", type: LIST_LAYOUT, group: { id: "1", name: "基础参数", displayOrder: 2 } })
-    protected $layout = LIST_LAYOUT.SINGLE_LINE;
+    protected $layout = LIST_LAYOUT.SINGLE;
     @property({ displayName: "子项间距", type: CCInteger, group: { id: "1", name: "基础参数", displayOrder: 3 } })
     protected $spacing = 0;
     @property({ displayName: "滚动开关", group: { id: "2", name: "惯性", displayOrder: 1 } })
@@ -266,6 +267,12 @@ export class VList extends Component {
     protected onItemHide(vitem: VirtualItem) {
         const item = this.getItemAt(vitem.i, false);
         if (item) {
+            const opa = item.getComponent(UIOpacity);
+            if (opa) {
+                Tween.stopAllByTarget(opa);
+                opa.opacity = 255;
+                opa.destroy();
+            }
             this._itemPool.put(item);
         }
     }
@@ -455,7 +462,6 @@ export class VList extends Component {
 
         // 更新容器
         this._containerTransform.setContentSize(this.calculateSize());
-        this._container.setPosition(this._startPos);
         this.drawContainerBounds();
         this.checkVirtualBounds();
     }
@@ -471,6 +477,7 @@ export class VList extends Component {
                 this._itemPool.put(ritem);
             }
         }
+        this.data = null;
     }
 
     /**
@@ -508,32 +515,86 @@ export class VList extends Component {
         let item = this._container.getChildByName(name);
         if (!item && force) {
             item = this.appendRealItem();
-            item.getChildByName("Label").getComponent(Label).string = (index + 1).toString();
+            item.getChildByName("Label").getComponent(Label).string = this._dataSource[index].toString();
             item.on("click", this.onItemClicked, this);
         }
         if (item) {
             item.name = name;
-            // const height = this.getItemSize(index)[1];
-            // item.setPosition(0, -height / 2 - height * index - this.$spacing * (index + 1));
         }
         return item;
+    }
+
+    /** 移除第一项 */
+    public removeStart() {
+        this.removeAt(0);
+    }
+
+    /** 移除最后一项 */
+    public removeEnd() {
+        this.removeAt(this.count - 1);
     }
 
     /**
      * 移除指定索引处的子项
      * @param index 索引
      */
-    private removeAt(index: number) {
-        // @todo
+    public removeAt(index: number) {
+        if (this._dataSource) {
+            this._dataSource.splice(index, 1);
+            this.data = this._dataSource;
+        }
     }
 
     /**
      * 移除指定范围内的子项
      * @param start 开始索引
-     * @param end 结束索引
+     * @param count 移除数量
      */
-    private removeRange(start: number, end: number) {
-        // @todo
+    public removeRange(start: number, count: number) {
+        if (this._dataSource && count > 0) {
+            this._dataSource.splice(start, count);
+            this.data = this._dataSource;
+        }
+    }
+
+    /**
+     * 插入数据项
+     * @param index 索引
+     * @param item 数据项
+     */
+    public insertAt(index: number, item: any) {
+        if (this._dataSource) {
+            this._dataSource.splice(index, 0, item);
+            this.data = this._dataSource;
+        }
+    }
+
+    /**
+     * 插入数据项到开头
+     * @param item 数据项
+     */
+    public insertStart(item: any) {
+        this.insertAt(0, item);
+    }
+
+    /**
+     * 插入数据项到末尾
+     * @param item 数据项
+     */
+    public insertEnd(item: any) {
+        this.insertAt(this.count, item);
+    }
+
+    /**
+     * 从指定索引处开始，插入数据项数组
+     * @param start 开始索引
+     * @param items 数据项数组
+     */
+    public insertRange(start: number, items: any[]) {
+        if (this._dataSource && items.length > 0) {
+            this._dataSource.splice(start, 0, ...items);
+            this.data = this._dataSource;
+        }
     }
 
     /**
@@ -612,8 +673,6 @@ export class VList extends Component {
                 pos.y = -pos.y - vitem.h / 2 - this.$spacing / 2 + this._minHeight / 2;
                 pos.y = Math.min(pos.y, this.contentSize.height - this._minHeight / 2 - this.$spacing / 2);
             }
-            // @test
-            __TEST__ && console.log("==scrollTo==", index, pos.toString());
             this.scrollTo(pos, delta);
         }
     }
