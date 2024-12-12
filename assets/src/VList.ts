@@ -234,7 +234,6 @@ export class VList extends Component {
             this._scrollDelta = delta / 1000;
             this._scrollOffset.x = LEAVE_POS.x - DROP_POS.x;
             this._scrollOffset.y = LEAVE_POS.y - DROP_POS.y;
-            console.log("惯性滚动开始", this._scrollDelta);
         }
     }
 
@@ -376,9 +375,9 @@ export class VList extends Component {
         }
         if (count > 0) {
             if (hor) {
-                width += count * spacing;
+                width += (count + 1) * spacing;
             } else {
-                height += count * spacing;
+                height += (count + 1) * spacing;
             }
         }
         width = Math.max(width, this._minWidth);
@@ -400,7 +399,7 @@ export class VList extends Component {
      * @param delta 动画时间
      */
     public scrollTo(position: Vec3, delta: number = 0) {
-        Tween.stopAllByTarget(this._container);
+        this.stopScroll();
         tween(this._container).to(delta, { position: position }).start();
     }
 
@@ -461,6 +460,7 @@ export class VList extends Component {
                 this.checkBounce();
                 return;
             }
+            if (this.checkBounce()) return;
             this._scrollDelta -= dt * 0.1;
             const speedX = this._scrollOffset.x * this._scrollDelta * 2;
             const speedY = this._scrollOffset.y * this._scrollDelta * 2;
