@@ -18,6 +18,7 @@ import {
     Label,
     Sprite,
     Rect,
+    EventMouse,
 } from "cc";
 import VItem from "./VItem";
 const { ccclass, property } = _decorator;
@@ -151,17 +152,17 @@ export class VList extends Component {
     protected $layout = LIST_LAYOUT.SINGLE_LINE;
     @property({ displayName: "子项间距", type: CCInteger, group: { id: "1", name: "基础参数", displayOrder: 3 } })
     protected $spacing = 0;
-    @property({ displayName: "滚动开关", group: { id: "1", name: "惯性", displayOrder: 1 } })
+    @property({ displayName: "滚动开关", group: { id: "2", name: "惯性", displayOrder: 1 } })
     protected $inertia = false;
-    @property({ displayName: "滚动倍速", group: { id: "1", name: "惯性", displayOrder: 2 } })
+    @property({ displayName: "滚动倍速", group: { id: "2", name: "惯性", displayOrder: 2 } })
     protected $speed = 1;
-    @property({ displayName: "左", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 1 } })
+    @property({ displayName: "左", type: CCInteger, group: { id: "3", name: "边距", displayOrder: 1 } })
     protected $paddingLeft = 0;
-    @property({ displayName: "右", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
+    @property({ displayName: "右", type: CCInteger, group: { id: "3", name: "边距", displayOrder: 2 } })
     protected $paddingRight = 0;
-    @property({ displayName: "上", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 3 } })
+    @property({ displayName: "上", type: CCInteger, group: { id: "3", name: "边距", displayOrder: 3 } })
     protected $paddingTop = 0;
-    @property({ displayName: "下", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 4 } })
+    @property({ displayName: "下", type: CCInteger, group: { id: "3", name: "边距", displayOrder: 4 } })
     protected $paddingBottom = 0;
 
     protected onLoad(): void {
@@ -180,7 +181,7 @@ export class VList extends Component {
         maskT.setContentSize(mw, mh);
         maskC.type = Mask.Type.GRAPHICS_RECT;
         maskC.inverted = false;
-        maskC.enabled = false;
+        maskC.enabled = true;
 
         // 创建容器
         const containerN = new Node("container");
@@ -213,6 +214,7 @@ export class VList extends Component {
     protected onEnable(): void {
         this.view.on(Node.EventType.TOUCH_START, this.onTouchDrop, this, true);
         this.view.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this, true);
+        this.view.on(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this, true);
         this.view.on(Node.EventType.TOUCH_END, this.onTouchLeave, this, true);
         this.view.on(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this, true);
     }
@@ -220,6 +222,7 @@ export class VList extends Component {
     protected onDisable(): void {
         this.view.off(Node.EventType.TOUCH_START, this.onTouchDrop, this, true);
         this.view.off(Node.EventType.TOUCH_MOVE, this.onTouchMove, this, true);
+        this.view.off(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this, true);
         this.view.off(Node.EventType.TOUCH_END, this.onTouchLeave, this, true);
         this.view.off(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this, true);
     }
@@ -295,6 +298,7 @@ export class VList extends Component {
      * @param e 触摸事件
      */
     private onTouchDrop(e: EventTouch) {
+        __TEST__ && console.log("==drop==");
         DROP_AT = Date.now();
         DROP_POS.x = e.getLocationX();
         DROP_POS.y = e.getLocationY();
@@ -303,27 +307,41 @@ export class VList extends Component {
     }
 
     /**
-     * 容器尺寸
-     */
-    public get contentSize() {
-        return this._containerTransform.contentSize;
-    }
-
-    /**
      * 拖拽
      * @param e 触摸事件
      */
     private onTouchMove(e: EventTouch) {
+        __TEST__ && console.log("==move==");
         this.stopScroll();
-        const delta = e.getDelta();
-        if (this.horizontal) {
-            LAST_POS.x += delta.x;
-            this._container.setPosition(this._container.position.x + delta.x, this._container.position.y);
-        } else {
-            LAST_POS.y += delta.y;
-            this._container.setPosition(this._container.position.x, this._container.position.y + delta.y);
+        const delta = e.getDelta().multiplyScalar(0.85);
+        if (delta.length() != 0) {
+            if (this.horizontal) {
+                LAST_POS.x += delta.x;
+                this._container.setPosition(this._container.position.x + delta.x, this._container.position.y);
+            } else {
+                LAST_POS.y += delta.y;
+                this._container.setPosition(this._container.position.x, this._container.position.y + delta.y);
+            }
+            this._dirty = true;
         }
-        this._dirty = true;
+    }
+
+    /**
+     * 鼠标滚轮滚动
+     * @param e 滚轮事件
+     */
+    private onMouseWheel(e: EventMouse) {
+        this.stopScroll();
+        const delta = e.getScrollY() * -0.1;
+        if (delta != 0) {
+            if (this.horizontal) {
+                this._container.setPosition(this._container.position.x + delta, this._container.position.y);
+            } else {
+                this._container.setPosition(this._container.position.x, this._container.position.y + delta);
+            }
+            this._dirty = true;
+            this.updateBounds();
+        }
     }
 
     /**
@@ -331,7 +349,7 @@ export class VList extends Component {
      * @param e 触摸事件
      */
     private onTouchLeave(e: EventTouch) {
-        console.log("--leave--", this._startPos.toString(), this._container.position.toString());
+        __TEST__ && console.log("==leave==");
         if (this.checkBounce()) return;
         if (this.$inertia) {
             LEAVE_AT = Date.now();
@@ -346,6 +364,13 @@ export class VList extends Component {
             this._scrollOffset.x = LEAVE_POS.x - DROP_POS.x;
             this._scrollOffset.y = LEAVE_POS.y - DROP_POS.y;
         }
+    }
+
+    /**
+     * 容器尺寸
+     */
+    public get contentSize() {
+        return this._containerTransform.contentSize;
     }
 
     /**
@@ -469,6 +494,10 @@ export class VList extends Component {
         }
     }
 
+    private onItemClicked(e: any) {
+        console.log(e);
+    }
+
     /**
      * 获取指定索引处的子项
      * @param index 索引
@@ -480,6 +509,7 @@ export class VList extends Component {
         if (!item && force) {
             item = this.appendRealItem();
             item.getChildByName("Label").getComponent(Label).string = (index + 1).toString();
+            item.on("click", this.onItemClicked, this);
         }
         if (item) {
             item.name = name;
@@ -577,10 +607,10 @@ export class VList extends Component {
             const pos = vitem.position.clone();
             if (this.horizontal) {
                 pos.x = -pos.x - this._minWidth / 2 + this.$spacing / 2 + vitem.w / 2;
-                pos.x = Math.max(pos.x, -this.contentSize.width + this.minWidth / 2);
+                pos.x = Math.max(pos.x, -this.contentSize.width + this.minWidth / 2 + this.$spacing / 2);
             } else {
                 pos.y = -pos.y - vitem.h / 2 - this.$spacing / 2 + this._minHeight / 2;
-                pos.y = Math.min(pos.y, this.contentSize.height - this._minHeight / 2);
+                pos.y = Math.min(pos.y, this.contentSize.height - this._minHeight / 2 - this.$spacing / 2);
             }
             // @test
             __TEST__ && console.log("==scrollTo==", index, pos.toString());
