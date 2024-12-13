@@ -4,6 +4,9 @@ export default class Hook {
         this.hook = hook;
         this.thisArg = thisArg;
     }
+    public equals(hook: Function, thisArg: any) {
+        return this.hook === hook && this.thisArg === thisArg;
+    }
     public run() {
         this.hook.apply(this.thisArg);
     }
