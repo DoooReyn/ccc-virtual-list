@@ -2,7 +2,6 @@ import {
     _decorator,
     Component,
     Node,
-    instantiate,
     CCInteger,
     Mask,
     Enum,
@@ -15,18 +14,14 @@ import {
     tween,
     Tween,
     Size,
-    Label,
     Rect,
     EventMouse,
-    UIOpacity,
     Event,
 } from "cc";
-import VItem from "./VItem";
 import ReusableObjectPool, { ReusableObject } from "./ReusableObjectPool";
-import ReusableNodePool from "./ReusableNodePool";
 const { ccclass, property } = _decorator;
 
-const __TEST__ = true;
+const __TEST__ = false;
 
 /** 列表滚动方向 */
 export const LIST_DIRCTION = Enum({
@@ -104,16 +99,13 @@ class VirtualItem extends ReusableObject {
     }
 }
 
-const VNodePool = new ReusableNodePool();
-
+/**
+ * 虚拟列表
+ */
 @ccclass("VList")
-export class VList extends Component {
+export abstract class VList extends Component {
     public static readonly VirtualPool: ReusableObjectPool = new ReusableObjectPool();
 
-    /** 容器节点 */
-    private _container: Node = null;
-    /** 容器变化组件 */
-    private _containerTransform: UITransform = null;
     /** 容器最小宽度 */
     private _minWidth: number = 0;
     /** 容器最小高度 */
@@ -124,14 +116,10 @@ export class VList extends Component {
     private _scrollDelta: number = 0;
     /** 滚动距离（仅用于计算） */
     private _scrollOffset: Vec2 = new Vec2();
-    /** 数据源 */
-    private _dataSource: any[] | null;
     /** 容器起始位置 */
     private _startPos: Vec3 = null;
     /** 是否需要刷新状态 */
     private _dirty: boolean = false;
-    /** 虚拟子项列表 */
-    protected _vitems: VirtualItem[] = [];
     /** 触摸落下计时点 */
     private _dropAt: number = 0;
     /** 触摸松开计时点 */
@@ -142,6 +130,14 @@ export class VList extends Component {
     private _dropPos: Vec2 = new Vec2();
     /** 触摸松开位置 */
     private _leavePos: Vec2 = new Vec2();
+    /** 虚拟子项列表 */
+    protected _vitems: VirtualItem[] = [];
+    /** 容器节点 */
+    protected _container: Node = null;
+    /** 容器变化组件 */
+    protected _containerTransform: UITransform = null;
+    /** 数据源 */
+    protected _dataSource: any[] | null;
 
     @property({ displayName: "滚动方向", type: LIST_DIRCTION, group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $direction = LIST_DIRCTION.VERTICAL;
@@ -205,11 +201,10 @@ export class VList extends Component {
             containerN.addComponent(Graphics);
             (<any>window).vlist = this;
         }
-
-        // 对象池
-        VNodePool.add(this.node.parent.getChildByName("HItem"));
-        VNodePool.add(this.node.parent.getChildByName("VItem"));
     }
+
+    protected abstract onItemAcquire(item: Node): void;
+    protected abstract onItemRecycle(item: Node): void;
 
     protected onEnable(): void {
         this.view.on(Node.EventType.TOUCH_START, this.onTouchDrop, this, true);
@@ -225,12 +220,6 @@ export class VList extends Component {
         this.view.off(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this, true);
         this.view.off(Node.EventType.TOUCH_END, this.onTouchLeave, this, true);
         this.view.off(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this, true);
-    }
-
-    protected start(): void {
-        if (__TEST__) {
-            this.data = new Array(100).fill(0).map((_, i) => i + 1);
-        }
     }
 
     /** 是否水平滚动 */
@@ -266,28 +255,8 @@ export class VList extends Component {
     protected onItemHide(vitem: VirtualItem) {
         const item = this.getItemAt(vitem.i, false);
         if (item) {
-            const opa = item.getComponent(UIOpacity);
-            if (opa) {
-                Tween.stopAllByTarget(opa);
-                opa.opacity = 255;
-                opa.destroy();
-            }
-            VNodePool.recycle(item);
+            this.recycleItem(item);
         }
-    }
-
-    /** 添加实体子项 */
-    private appendRealItem() {
-        let target: "HItem" | "VItem";
-        if (this.horizontal) {
-            target = "HItem";
-        } else {
-            target = "VItem";
-        }
-        const item = VNodePool.acquire(target);
-        item.active = true;
-        this._container.addChild(item);
-        return item;
     }
 
     /** 绘制容器边界 */
@@ -462,7 +431,7 @@ export class VList extends Component {
         // 清理虚拟子项
         for (let i = 0, ritem: Node; i < this._vitems.length; i++) {
             ritem = this.getItemAt(i, false);
-            if (ritem) VNodePool.recycle(ritem);
+            if (ritem) this.recycleItem(ritem);
             VList.VirtualPool.recycle(this._vitems[i]);
         }
         this._vitems.length = 0;
@@ -499,7 +468,7 @@ export class VList extends Component {
         const count = this._dataSource.length;
         for (let i = count - 1, ritem: Node; i >= 0; i--) {
             ritem = this.getItemAt(i, false);
-            if (ritem) VNodePool.recycle(ritem);
+            if (ritem) this.recycleItem(ritem);
         }
         this.data = null;
     }
@@ -525,6 +494,9 @@ export class VList extends Component {
         }
     }
 
+    protected abstract appendRealItem(): Node;
+    protected abstract recycleItem(item: Node): void;
+
     /**
      * 获取指定索引处的子项
      * @param index 索引
@@ -535,7 +507,7 @@ export class VList extends Component {
         let item = this._container.getChildByName(name);
         if (!item && force) {
             item = this.appendRealItem();
-            item.getChildByName("Label").getComponent(Label).string = this._dataSource[index].toString();
+            item["$vid"] = index;
         }
         if (item) {
             item.name = name;

@@ -394,7 +394,7 @@
     "_id": "c1mbZnPUBB1qX+XV2Co+GT"
   },
   {
-    "__type__": "7363bmAr7VFd4QLxViBYSYo",
+    "__type__": "1a992IhpdxDvJ3DeZwv4mMw",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -405,18 +405,18 @@
     "__prefab": null,
     "$direction": 1,
     "$layout": 0,
-    "$spacing": 10,
-    "$paddingLeft": 2,
-    "$paddingRight": 2,
-    "$paddingTop": 2,
-    "$paddingBottom": 2,
+    "$spacing": 5,
+    "$paddingLeft": 10,
+    "$paddingRight": 10,
+    "$paddingTop": 10,
+    "$paddingBottom": 10,
     "$inertia": true,
-    "$speed": 1,
+    "$speed": 0.5,
     "$scrollDelta": 300,
     "$scrollSpan": 60,
     "$bouncable": true,
     "$bounceTime": 0.1,
-    "_id": "b2PDkjUQxDcofEe1fWnJlt"
+    "_id": "efxCAlcfNNsLACdzlMi7Vt"
   },
   {
     "__type__": "cc.Node",
