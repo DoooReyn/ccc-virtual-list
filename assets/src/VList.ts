@@ -22,6 +22,8 @@ import {
     Event,
 } from "cc";
 import VItem from "./VItem";
+import ReusableObjectPool, { ReusableObject } from "./ReusableObjectPool";
+import ReusableNodePool from "./ReusableNodePool";
 const { ccclass, property } = _decorator;
 
 const __TEST__ = true;
@@ -43,7 +45,7 @@ export const LIST_LAYOUT = Enum({
 });
 
 /** 虚拟子项 */
-class VirtualItem {
+class VirtualItem extends ReusableObject {
     /** 子项索引 */
     public i: number = 0;
     /** 子项宽度 */
@@ -54,6 +56,8 @@ class VirtualItem {
     public x: number = 0;
     /** 子项纵坐标 */
     public y: number = 0;
+    /** 是否显示 */
+    public s: boolean = false;
     /** 虚拟列表 */
     public list: VList = null;
     /** 矩形边界 */
@@ -68,18 +72,6 @@ class VirtualItem {
         intersects ? this.onShow() : this.onHide();
         return intersects;
     }
-    protected onShow() {
-        // @ts-ignore
-        this.list.onItemShow(this);
-    }
-    protected onHide() {
-        // @ts-ignore
-        this.list.onItemHide(this);
-    }
-    protected onRecycle() {
-        this.i = this.w = this.h = this.x = this.y = 0;
-        this.list = null;
-    }
     public get position() {
         if (this.list.horizontal) {
             return new Vec3(this.x + this.w / 2, this.y, 0);
@@ -87,47 +79,37 @@ class VirtualItem {
             return new Vec3(this.x, this.y + this.h / 2, 0);
         }
     }
+    protected onShow() {
+        if (!this.s) {
+            this.s = true;
+            // @ts-ignore
+            this.list.onItemShow(this);
+        }
+    }
+    protected onHide() {
+        if (this.s) {
+            this.s = false;
+            // @ts-ignore
+            this.list.onItemHide(this);
+        }
+    }
+    protected onAcquire(): void {}
+    protected onRecycle() {
+        this.i = this.w = this.h = this.x = this.y = 0;
+        this.s = false;
+        this.list = null;
+    }
+    protected onDestroy(): void {
+        this.onRecycle();
+    }
 }
 
-/** 虚拟子项对象池 */
-class VirtualItemFactory {
-    private static _inst: VirtualItemFactory = null;
-    public static get inst() {
-        return (this._inst ??= new VirtualItemFactory());
-    }
-    private _pool: VirtualItem[] = [];
-    public get(): VirtualItem {
-        if (this._pool.length > 0) {
-            return this._pool.pop();
-        }
-        return new VirtualItem();
-    }
-    public put(item: VirtualItem) {
-        this._pool.push(item);
-    }
-}
-
-/** 实际子项对象池 */
-class RealItemFactory {
-    private _template: Node;
-    private _pool: Node[] = [];
-    public set template(t: Node) {
-        this._template = t;
-    }
-    public get(): Node {
-        if (this._pool.length > 0) {
-            return this._pool.pop();
-        }
-        return instantiate(this._template);
-    }
-    public put(item: Node) {
-        item.removeFromParent();
-        this._pool.push(item);
-    }
-}
+const VNodePool = new ReusableNodePool();
 
 @ccclass("VList")
 export class VList extends Component {
+    public static readonly VirtualPool: ReusableObjectPool = new ReusableObjectPool();
+
     /** 容器节点 */
     private _container: Node = null;
     /** 容器变化组件 */
@@ -150,8 +132,6 @@ export class VList extends Component {
     private _dirty: boolean = false;
     /** 虚拟子项列表 */
     protected _vitems: VirtualItem[] = [];
-    /** 子项对象池 */
-    protected _itemPool: RealItemFactory = new RealItemFactory();
     /** 触摸落下计时点 */
     private _dropAt: number = 0;
     /** 触摸松开计时点 */
@@ -227,13 +207,8 @@ export class VList extends Component {
         }
 
         // 对象池
-        if (this.horizontal) {
-            const template = this.node.parent.getChildByName("HItem");
-            this._itemPool.template = template;
-        } else {
-            const template = this.node.parent.getChildByName("VItem");
-            this._itemPool.template = template;
-        }
+        VNodePool.add(this.node.parent.getChildByName("HItem"));
+        VNodePool.add(this.node.parent.getChildByName("VItem"));
     }
 
     protected onEnable(): void {
@@ -297,13 +272,19 @@ export class VList extends Component {
                 opa.opacity = 255;
                 opa.destroy();
             }
-            this._itemPool.put(item);
+            VNodePool.recycle(item);
         }
     }
 
     /** 添加实体子项 */
     private appendRealItem() {
-        const item = this._itemPool.get();
+        let target: "HItem" | "VItem";
+        if (this.horizontal) {
+            target = "HItem";
+        } else {
+            target = "VItem";
+        }
+        const item = VNodePool.acquire(target);
         item.active = true;
         this._container.addChild(item);
         return item;
@@ -481,8 +462,8 @@ export class VList extends Component {
         // 清理虚拟子项
         for (let i = 0, ritem: Node; i < this._vitems.length; i++) {
             ritem = this.getItemAt(i, false);
-            if (ritem) this._itemPool.put(ritem);
-            VirtualItemFactory.inst.put(this._vitems[i]);
+            if (ritem) VNodePool.recycle(ritem);
+            VList.VirtualPool.recycle(this._vitems[i]);
         }
         this._vitems.length = 0;
 
@@ -493,7 +474,8 @@ export class VList extends Component {
             let bounds = this.viewBounds;
             for (let i = 0; i < this._dataSource.length; i++) {
                 const [width, height] = this.getItemSize(i);
-                item = VirtualItemFactory.inst.get();
+                item = VList.VirtualPool.acqruire(VirtualItem);
+                this._vitems.push(item);
                 item.list = this;
                 item.i = i;
                 item.x = hor ? (width + this.$spacing) * (i + 1) - width : 0;
@@ -501,7 +483,6 @@ export class VList extends Component {
                 item.w = width;
                 item.h = height;
                 item.checkBounds(bounds);
-                this._vitems.push(item);
             }
         }
 
@@ -518,9 +499,7 @@ export class VList extends Component {
         const count = this._dataSource.length;
         for (let i = count - 1, ritem: Node; i >= 0; i--) {
             ritem = this.getItemAt(i, false);
-            if (ritem) {
-                this._itemPool.put(ritem);
-            }
+            if (ritem) VNodePool.recycle(ritem);
         }
         this.data = null;
     }
@@ -815,3 +794,5 @@ export class VList extends Component {
         }
     }
 }
+
+VList.VirtualPool.add(VirtualItem);
