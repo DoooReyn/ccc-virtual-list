@@ -1,5 +1,5 @@
-import { Node, Prefab, AssetManager, instantiate, isValid } from "cc";
-import Hook from "./Hook";
+import { Node, Prefab, AssetManager, instantiate, isValid, misc } from "cc";
+import Hooks from "./Hooks";
 
 /** 模板节点支持类型 */
 type VTemplate = Node | Prefab;
@@ -16,13 +16,15 @@ export default class ReusableNodePool {
     /** 池子 */
     private _pools: AssetManager.Cache<Node[]>;
     /** 取出钩子 */
-    private _getHook: Hook;
+    private _acquireHooks: Hooks;
     /** 返还钩子 */
-    private _putHook: Hook;
+    private _recycleHooks: Hooks;
 
     constructor() {
         this._templates = new AssetManager.Cache<VTemplate>();
         this._pools = new AssetManager.Cache<Node[]>();
+        this._acquireHooks = new Hooks();
+        this._recycleHooks = new Hooks();
     }
 
     /**
@@ -47,16 +49,28 @@ export default class ReusableNodePool {
     }
 
     /**
-     * 设置取出钩子
+     * 添加取出钩子
      * @param hook 钩子
      * @param thisArg 钩子 this 指向
      */
-    public hookGet(hook: Function, thisArg: any) {
-        if (this._getHook) {
-            this._getHook.set(hook, thisArg);
-        } else {
-            this._getHook = new Hook(hook, thisArg);
-        }
+    public onHookAcquire(hook: Function, thisArg: any) {
+        this._acquireHooks.set(hook, thisArg);
+    }
+
+    /**
+     * 解除取出钩子
+     * @param hook 钩子
+     * @param thisArg 钩子 this 指向
+     */
+    public offHookGet(hook: Function, thisArg: any) {
+        this._acquireHooks.delete(hook, thisArg);
+    }
+
+    /**
+     * 解除所有取出钩子
+     */
+    public offAllHookAcquire() {
+        this._acquireHooks.clear();
     }
 
     /**
@@ -64,12 +78,24 @@ export default class ReusableNodePool {
      * @param hook 钩子
      * @param thisArg 钩子 this 指向
      */
-    public hookPut(hook: Function, thisArg: any) {
-        if (this._putHook) {
-            this._putHook.set(hook, thisArg);
-        } else {
-            this._putHook = new Hook(hook, thisArg);
-        }
+    public onHookRecycle(hook: Function, thisArg: any) {
+        this._recycleHooks.set(hook, thisArg);
+    }
+
+    /**
+     * 解除返还钩子
+     * @param hook 钩子
+     * @param thisArg 钩子 this 指向
+     */
+    public offHookRecycle(hook: Function, thisArg: any) {
+        this._recycleHooks.delete(hook, thisArg);
+    }
+
+    /**
+     * 解除所有返还钩子
+     */
+    public offAllHookRecycle() {
+        this._recycleHooks.clear();
     }
 
     /**
@@ -87,8 +113,8 @@ export default class ReusableNodePool {
                 item = instantiate(template) as Node;
                 item[__TEMPLATE_TAG__] = name;
             }
-            if (this._getHook) {
-                this._getHook.runWith(item);
+            if (this._acquireHooks) {
+                misc.callInNextTick(() => !!this && this._acquireHooks.runWith(item));
             }
             return item;
         }
@@ -104,8 +130,8 @@ export default class ReusableNodePool {
         if (name) {
             const pool = this._pools.get(name);
             if (pool) {
-                if (this._putHook) {
-                    this._putHook.runWith(node);
+                if (this._recycleHooks) {
+                    this._recycleHooks.runWith(node);
                 }
                 node.removeFromParent();
                 pool.push(node);
