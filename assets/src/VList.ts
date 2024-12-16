@@ -924,15 +924,12 @@ export abstract class VList extends Component {
     }
 
     private checkSticky() {
-        if (this.$stickAtEnd && this._stickDirty && !this.animating) {
+        if (this.$stickAtEnd && this._stickDirty && !this._animating) {
             const atEnd = this.atEnd();
-            const animating = this.animating;
-            if (!animating) {
-                if (atEnd) {
-                    this._stickDirty = false;
-                } else {
-                    this.scrollToEnd(this.$bounceTime);
-                }
+            if (atEnd) {
+                this._stickDirty = false;
+            } else {
+                this.scrollToEnd(this.$bounceTime);
             }
         }
     }
