@@ -14,19 +14,19 @@ import {
     tween,
     Tween,
     Size,
-    Rect,
     EventMouse,
     Event,
     misc,
 } from "cc";
-import ReusableObjectPool, { ReusableObject } from "./ReusableObjectPool";
+import ReusableObjectPool from "./ReusableObjectPool";
+import VirtualItem from "./VirtualItem";
 const { ccclass, property } = _decorator;
 
 /** 虚拟子项的索引标识 */
 const VIRTUAL_ID_TAG = Symbol("$vid");
 
 /** 列表滚动方向 */
-export const LIST_DIRCTION = Enum({
+const LIST_DIRCTION = Enum({
     /** 水平 */
     HORIZONTAL: 0,
     /** 垂直 */
@@ -34,83 +34,20 @@ export const LIST_DIRCTION = Enum({
 });
 
 /** 列表布局方式 */
-export const LIST_LAYOUT = Enum({
+const LIST_LAYOUT = Enum({
     /** 单个 */
     SINGLE: 0,
     /** 网格 */
     GRID: 1,
 });
 
-/** 虚拟子项 */
-class VirtualItem extends ReusableObject {
-    /** 子项索引 */
-    public i: number = 0;
-    /** 子项宽度 */
-    public w: number = 0;
-    /** 子项高度 */
-    public h: number = 0;
-    /** 子项横坐标 */
-    public x: number = 0;
-    /** 子项纵坐标 */
-    public y: number = 0;
-    /** 是否显示 */
-    public s: boolean = false;
-    /** 虚拟列表 */
-    public list: VList = null;
-    /** 矩形边界 */
-    private _rect: Rect = new Rect();
-    /**
-     * 检查边界
-     * @param bounds 容器边界
-     */
-    public checkBounds(bounds: Rect) {
-        this._rect.set(this.x + this.list.container.position.x, this.y + this.list.container.position.y, this.w, this.h);
-        const intersects = this._rect.intersects(bounds);
-        intersects ? this.onShow() : this.onHide();
-        // return intersects;
-    }
-    public get position() {
-        if (this.list.horizontal) {
-            return new Vec3(this.x + this.w / 2, this.y, 0);
-        } else {
-            return new Vec3(this.x, this.y + this.h / 2, 0);
-        }
-    }
-    protected onShow() {
-        if (!this.s) {
-            this.s = true;
-        }
-        // @ts-ignore
-        this.list.onItemShow(this);
-    }
-    protected onHide() {
-        this.s = false;
-        // @ts-ignore
-        this.list.onItemHide(this);
-    }
-    protected reset() {
-        this.i = this.w = this.h = this.x = this.y = 0;
-        this.s = false;
-        this.list = null;
-    }
-    protected onAcquire(): void {
-        this.reset();
-    }
-    protected onRecycle() {
-        this.reset();
-    }
-    protected onDestroy(): void {
-        this.reset();
-    }
-}
-
 /**
  * 虚拟列表
  */
-@ccclass("VList")
-export abstract class VList extends Component {
-    public static readonly VirtualPool: ReusableObjectPool = new ReusableObjectPool();
-
+@ccclass("VirtualList")
+export abstract class VirtualList extends Component {
+    /** 虚拟子项对象池 */
+    public static VirtualPool: ReusableObjectPool = null;
     /** 容器最小宽度 */
     private _minWidth: number = 0;
     /** 容器最小高度 */
@@ -146,7 +83,9 @@ export abstract class VList extends Component {
     /** 数据源 */
     protected _dataSource: any[] | null;
     /** 固定滚到底部 */
-    protected _stickDirty: boolean = false;
+    protected _stickEndDirty: boolean = false;
+    /** 滚动到索引 */
+    private _toIndex: number | null = null;
 
     @property({ displayName: "调试绘制", displayOrder: 0 })
     protected $debugDraw: boolean = false;
@@ -156,11 +95,7 @@ export abstract class VList extends Component {
     protected $layout = LIST_LAYOUT.SINGLE;
     @property({ displayName: "子项间距", type: CCInteger, group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $spacing = 0;
-    @property({
-        displayName: "自动滚到底部",
-        tooltip: "在聊天列表中非常有用",
-        group: { id: "1", name: "基础参数", displayOrder: 1 },
-    })
+    @property({ displayName: "自动滚到底部", group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $stickAtEnd: boolean = false;
     @property({ displayName: "左", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
     protected $paddingLeft = 0;
@@ -183,7 +118,123 @@ export abstract class VList extends Component {
     @property({ displayName: "回弹时间", group: { id: "4", name: "回弹", displayOrder: 4 } })
     protected $bounceTime = 0.1;
 
+    /** 是否水平滚动 */
+    public get horizontal() {
+        return this.$direction == LIST_DIRCTION.HORIZONTAL;
+    }
+
+    /** 是否垂直滚动 */
+    public get vertical() {
+        return this.$direction == LIST_DIRCTION.VERTICAL;
+    }
+
+    /** 实际子项数量 */
+    public get realItemCount() {
+        return this._container.children.length;
+    }
+
+    /** 视图边界 */
+    protected get viewBounds() {
+        return this.node.getComponent(UITransform).getBoundingBox();
+    }
+
+    /**
+     * 容器尺寸
+     */
+    public get contentSize() {
+        return this._containerTransform.contentSize;
+    }
+
+    /** 自动回弹时间 */
+    private get bouncableTime() {
+        return this.$bouncable ? this.$bounceTime : 0;
+    }
+
+    /** 最小宽度 */
+    public get minWidth() {
+        return this._minWidth;
+    }
+
+    /** 最小高度 */
+    public get minHeight() {
+        return this._minHeight;
+    }
+
+    /** 视图节点 */
+    public get view() {
+        return this.node;
+    }
+
+    /** 容器节点 */
+    public get container() {
+        return this._container;
+    }
+
+    /** 容器起始位置 */
+    public get startPos() {
+        return new Vec3(this._startPos);
+    }
+
+    /** 容器结束位置 */
+    public get endPos() {
+        const size = this.contentSize;
+        if (this.horizontal) {
+            return new Vec3(-size.width + this._minWidth / 2 + this.$spacing / 2, this._startPos.y);
+        } else {
+            return new Vec3(this._startPos.x, size.height - this.minHeight / 2 - this.$spacing / 2);
+        }
+    }
+
+    /** 子项数量 */
+    public get count() {
+        return this._dataSource ? this._dataSource.length : 0;
+    }
+
+    /** 容器是否在起始位置 */
+    public get atStart() {
+        if (this.horizontal) {
+            return this._container.position.x >= this._startPos.x + this.$spacing / 2;
+        } else {
+            return this.container.position.y <= this._startPos.y + this.$spacing / 2;
+        }
+    }
+
+    /** 容器是否在结束位置 */
+    public get atEnd() {
+        if (this.horizontal) {
+            return this._container.position.x <= -this.contentSize.width + this.minWidth / 2 + this.$spacing / 2;
+        } else {
+            return this.container.position.y >= this.contentSize.height - this._minHeight / 2 - this.$spacing / 2;
+        }
+    }
+
+    /** 是否正在滚动动画中 */
+    public get animating() {
+        return this._animating;
+    }
+
+    /** 是否保持最小尺寸 */
+    protected get isMinSize() {
+        return this.contentSize.width == this._minWidth && this.contentSize.height == this._minHeight;
+    }
+
+    /**
+     * 设置数据源
+     * @param data 数据源
+     */
+    public set data(data: any[]) {
+        this._dataSource = data;
+        this._stickEndDirty = true;
+        this.refreshView();
+    }
+
     protected onLoad(): void {
+        // 初始化虚拟子项对象池
+        if (!VirtualList.VirtualPool) {
+            VirtualList.VirtualPool = new ReusableObjectPool();
+            VirtualList.VirtualPool.add(VirtualItem);
+        }
+
         // 计算容器最小尺寸
         const { width, height } = this.node.getComponent(UITransform);
         const mw = width - this.$paddingLeft - this.$paddingRight;
@@ -214,6 +265,7 @@ export abstract class VList extends Component {
         containerN.setPosition(pos);
         this._startPos = pos.clone();
 
+        // 调试绘制外框
         if (this.$debugDraw) {
             containerN.addComponent(Graphics);
         }
@@ -225,11 +277,12 @@ export abstract class VList extends Component {
         this.view.on(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this, true);
         this.view.on(Node.EventType.TOUCH_END, this.onTouchLeave, this, true);
         this.view.on(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this, true);
-        this.schedule(this.checkSticky, 0.1);
+        this.schedule(this.checkEndSticky, 0.1);
     }
 
     protected onDisable(): void {
-        this.unschedule(this.checkSticky);
+        this.stopScroll();
+        this.unschedule(this.checkEndSticky);
         this.view.off(Node.EventType.TOUCH_START, this.onTouchDrop, this, true);
         this.view.off(Node.EventType.TOUCH_MOVE, this.onTouchMove, this, true);
         this.view.off(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this, true);
@@ -237,19 +290,29 @@ export abstract class VList extends Component {
         this.view.off(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this, true);
     }
 
-    /** 是否水平滚动 */
-    public get horizontal() {
-        return this.$direction == LIST_DIRCTION.HORIZONTAL;
-    }
-
-    /** 是否垂直滚动 */
-    public get vertical() {
-        return this.$direction == LIST_DIRCTION.VERTICAL;
-    }
-
-    /** 视图边界 */
-    protected get viewBounds() {
-        return this.node._uiProps.uiTransformComp.getBoundingBox();
+    protected lateUpdate(dt: number): void {
+        if (this._scrolling) {
+            if (this._scrollDelta <= 0) {
+                this.stopScroll();
+                this.checkBounce();
+                return;
+            }
+            if (this.checkBounce()) return;
+            this._scrollDirty = true;
+            this._scrollDelta -= dt * 0.1;
+            const speedX = this._scrollOffset.x * this._scrollDelta * this.$speed;
+            const speedY = this._scrollOffset.y * this._scrollDelta * this.$speed;
+            const pos = this._container.position;
+            if (this.horizontal) {
+                this._container.setPosition(pos.x + speedX, pos.y);
+            } else {
+                this._container.setPosition(pos.x, pos.y + speedY);
+            }
+        }
+        if (this._animating || this._scrollDirty) {
+            if (this._scrollDirty) this._scrollDirty = false;
+            this.checkVirtualBounds();
+        }
     }
 
     /**
@@ -286,7 +349,7 @@ export abstract class VList extends Component {
             containerG.clear();
             containerG.lineWidth = 2;
             containerG.strokeColor = new Color(255, 0, 255);
-            containerG.fillColor = new Color(0, 0, 0, 50);
+            containerG.fillColor = new Color(0, 0, 0, 25);
             containerG.fillRect(pos.x, pos.y, width, height);
             containerG.stroke();
         }
@@ -295,7 +358,7 @@ export abstract class VList extends Component {
     /**
      * 获取子项的索引
      * @param item 子项
-     * @returns
+     * @returns number
      */
     public getItemIndex(item: Node) {
         return item[VIRTUAL_ID_TAG] ?? -1;
@@ -305,7 +368,7 @@ export abstract class VList extends Component {
      * 如果目标是自身则停止传递事件
      * @param event 事件
      */
-    protected stopPropagationIfTargetIsMe(event: Event): void {
+    private stopPropagationIfTargetIsMe(event: Event): void {
         if (event.eventPhase === Event.AT_TARGET && event.target === this.node) {
             event.propagationStopped = true;
         }
@@ -387,61 +450,26 @@ export abstract class VList extends Component {
         this.stopPropagationIfTargetIsMe(e);
     }
 
-    /**
-     * 容器尺寸
-     */
-    public get contentSize() {
-        return this._containerTransform.contentSize;
-    }
-
-    /** 自动回弹时间 */
-    private get bouncableTime() {
-        return this.$bouncable ? this.$bounceTime : 0;
-    }
-
-    /**
-     * 检查回弹
-     * @return
-     */
+    /** 检查回弹 */
     private checkBounce() {
         if (this.horizontal) {
-            if (this._container.position.x > this._startPos.x) {
+            if (this._container.position.x > this.startPos.x) {
                 this.scrollToStart(this.bouncableTime);
                 return true;
-            } else if (this._container.position.x < -this._containerTransform.width + this.minWidth / 2) {
+            } else if (this._container.position.x < this.endPos.x) {
                 this.scrollToEnd(this.bouncableTime);
                 return true;
             }
         } else {
-            if (this._container.position.y < this._startPos.y) {
+            if (this._container.position.y < this.startPos.y) {
                 this.scrollToStart(this.bouncableTime);
                 return true;
-            } else if (this._container.position.y > this._containerTransform.height - this.minHeight / 2) {
+            } else if (this._container.position.y > this.endPos.y) {
                 this.scrollToEnd(this.bouncableTime);
                 return true;
             }
         }
         return false;
-    }
-
-    /** 最小宽度 */
-    public get minWidth() {
-        return this._minWidth;
-    }
-
-    /** 最小高度 */
-    public get minHeight() {
-        return this._minHeight;
-    }
-
-    /** 视图节点 */
-    public get view() {
-        return this.node;
-    }
-
-    /** 容器节点 */
-    public get container() {
-        return this._container;
     }
 
     /** 刷新列表 */
@@ -461,31 +489,39 @@ export abstract class VList extends Component {
             }
         }
         // 重置虚拟子项
-        this.rebuildVirtualItems();
+        this.buildVirtualItems();
     }
 
+    /**
+     * 创建虚拟子项
+     * @param index 索引
+     */
     protected acquireVirtualItem(index: number) {
         const [w, h] = this.preGetItemSize(index);
-        const vitem = VList.VirtualPool.acqruire<VirtualItem>(VirtualItem);
+        const vitem = VirtualList.VirtualPool.acqruire<VirtualItem>(VirtualItem);
         vitem.list = this;
         vitem.w = w;
         vitem.h = h;
         vitem.i = index;
-        vitem.s = false;
         this._vitems.push(vitem);
     }
 
+    /**
+     * 回收虚拟子项
+     * @param index 索引
+     */
     protected recycleVirtualItem(index: number) {
         const vitem = this._vitems[index];
         if (vitem) {
             const ritem = this.getItemAt(index, false);
             if (ritem) this.recycleItem(ritem);
             this._vitems.splice(index, 1);
-            VList.VirtualPool.recycle(vitem);
+            VirtualList.VirtualPool.recycle(vitem);
         }
     }
 
-    protected rebuildVirtualItems() {
+    /** 重建虚拟子项 */
+    protected buildVirtualItems() {
         const hor = this.horizontal;
         let startX: number = 0;
         let startY: number = 0;
@@ -508,65 +544,41 @@ export abstract class VList extends Component {
                 item.h = item.h;
             }
         }
+
         const size = this.calculateSize();
         this._containerTransform.setContentSize(size);
         this.drawContainerBounds();
-        if (this.atStart()) {
-            this._container.setPosition(this.getStartPos());
+        if (this.atStart) {
+            this._container.setPosition(this.startPos);
             misc.callInNextTick(() => this.scrollToStart(this.bouncableTime));
-        } else if (this.atEnd()) {
-            this._container.setPosition(this.getEndPos());
+        } else if (this.atEnd) {
+            this._container.setPosition(this.endPos);
             misc.callInNextTick(() => this.scrollToEnd(this.bouncableTime));
         } else {
             this.checkVirtualBounds();
         }
     }
 
-    public getStartPos() {
-        return new Vec3(this._startPos);
-    }
-
-    public getEndPos() {
-        const size = this.contentSize;
-        if (this.horizontal) {
-            return new Vec3(-size.width + this._minWidth / 2 + this.$spacing / 2, this._startPos.y);
-        } else {
-            return new Vec3(this._startPos.x, size.height - this.minHeight / 2 - this.$spacing / 2);
-        }
-    }
-
-    /**
-     * 设置数据源
-     * @param data 数据源
-     */
-    public set data(data: any[]) {
-        this._dataSource = data;
-        this._stickDirty = true;
-        this.refreshView();
-    }
-
-    /**
-     * 清空数据源
-     */
+    /** 清空数据源 */
     public clear() {
-        const count = this._dataSource.length;
-        for (let i = count - 1; i >= 0; i--) {
-            this.recycleVirtualItem(i);
+        if (this._dataSource) {
+            const count = this._dataSource.length;
+            for (let i = count - 1; i >= 0; i--) {
+                this.recycleVirtualItem(i);
+            }
+            this._vitems.length = 0;
+            this._dataSource.length = 0;
+            this._containerTransform.setContentSize(this.calculateSize());
+            this.drawContainerBounds();
+            this.scrollToStart();
         }
-        this._vitems.length = 0;
-        if (this._dataSource) this._dataSource.length = 0;
-        this._containerTransform.setContentSize(this.calculateSize());
-        this.drawContainerBounds();
-        this.scrollToStart();
     }
 
     /**
-     * 子项数量
+     * 预取子项尺寸
+     * @param index 索引
+     * @returns [number, number]
      */
-    public get count() {
-        return this._dataSource ? this._dataSource.length : 0;
-    }
-
     protected preGetItemSize(index: number): [number, number] {
         if (this._vitems[index]) {
             return [this._vitems[index].w, this._vitems[index].h];
@@ -575,47 +587,48 @@ export abstract class VList extends Component {
         }
     }
 
+    /**
+     * 更新子项尺寸
+     * @param index 索引
+     * @param width 宽度
+     * @param height 高度
+     */
     protected updateItemSize(index: number, width: number, height: number) {
         if (this._vitems[index]) {
             this._vitems[index].w = width;
             this._vitems[index].h = height;
-            this.rebuildVirtualItems();
-        }
-    }
-
-    protected updateItemWidth(index: number, width: number) {
-        if (this._vitems[index]) {
-            this._vitems[index].w = width;
-            this.rebuildVirtualItems();
-        }
-    }
-
-    protected updateItemHeight(index: number, height: number) {
-        if (this._vitems[index] && this._vitems[index].h != height) {
-            this._vitems[index].h = height;
-            this.rebuildVirtualItems();
+            this.buildVirtualItems();
         }
     }
 
     /**
-     * 获取子项尺寸
+     * 更新子项宽度
      * @param index 索引
-     * @returns
+     * @param width 宽度
      */
-    protected abstract getItemSize(index: number): [number, number];
+    protected updateItemWidth(index: number, width: number) {
+        if (this._vitems[index]) {
+            this._vitems[index].w = width;
+            this.buildVirtualItems();
+        }
+    }
 
-    /** 添加视图子项 */
-    protected abstract appendItem(index: number): Node;
-
-    protected abstract renderItem(item: Node, index: number): void;
-
-    /** 回收视图子项 */
-    protected abstract recycleItem(item: Node): void;
+    /**
+     * 更新子项高度
+     * @param index 索引
+     * @param height 高度
+     */
+    protected updateItemHeight(index: number, height: number) {
+        if (this._vitems[index] && this._vitems[index].h != height) {
+            this._vitems[index].h = height;
+            this.buildVirtualItems();
+        }
+    }
 
     /**
      * 获取指定索引处的子项
      * @param index 索引
-     * @returns
+     * @returns Node | null
      */
     public getItemAt(index: number, force: boolean = false): Node | null {
         const name = `item_${index}`;
@@ -630,16 +643,6 @@ export abstract class VList extends Component {
             item.name = name;
         }
         return item;
-    }
-
-    /** 移除第一项 */
-    public removeStart() {
-        this.removeAt(0);
-    }
-
-    /** 移除最后一项 */
-    public removeEnd() {
-        this.removeAt(this.count - 1);
     }
 
     /**
@@ -665,6 +668,16 @@ export abstract class VList extends Component {
         }
     }
 
+    /** 移除第一项 */
+    public removeStart() {
+        this.removeAt(0);
+    }
+
+    /** 移除最后一项 */
+    public removeEnd() {
+        this.removeAt(this.count - 1);
+    }
+
     /**
      * 插入数据项
      * @param index 索引
@@ -680,22 +693,6 @@ export abstract class VList extends Component {
             this._dataSource.splice(index, 0, item);
             this.data = this._dataSource;
         }
-    }
-
-    /**
-     * 插入数据项到开头
-     * @param item 数据项
-     */
-    public insertStart(item: any) {
-        this.insertAt(0, item);
-    }
-
-    /**
-     * 插入数据项到末尾
-     * @param item 数据项
-     */
-    public insertEnd(item: any) {
-        this.insertAt(this.count, item);
     }
 
     /**
@@ -716,16 +713,29 @@ export abstract class VList extends Component {
     }
 
     /**
-     * 计算容器尺寸
-     * @returns
+     * 插入数据项到开头
+     * @param item 数据项
      */
+    public insertStart(item: any) {
+        this.insertAt(0, item);
+    }
+
+    /**
+     * 插入数据项到末尾
+     * @param item 数据项
+     */
+    public insertEnd(item: any) {
+        this.insertAt(this.count, item);
+    }
+
+    /** 计算容器尺寸 */
     private calculateSize() {
         let width = 0,
             height = 0,
             size: [number, number];
-        let hor = this.horizontal;
-        let spacing = this.$spacing;
-        let count = this.count;
+        const hor = this.horizontal;
+        const spacing = this.$spacing;
+        const count = this.count;
         for (let i = 0; i < count; i++) {
             size = this.preGetItemSize(i);
             if (hor) {
@@ -746,19 +756,29 @@ export abstract class VList extends Component {
         return new Size(width, height);
     }
 
-    public atStart() {
-        if (this.horizontal) {
-            return this._container.position.x >= this._startPos.x + this.$spacing / 2;
-        } else {
-            return this.container.position.y <= this._startPos.y + this.$spacing / 2;
+    /** 更新边界与回弹 */
+    private updateBounds() {
+        this.checkBounce();
+        this.checkVirtualBounds();
+    }
+
+    /** 检查虚拟子项的边界 */
+    private checkVirtualBounds() {
+        const bounds = this.viewBounds;
+        for (let i = 0, item: VirtualItem; i < this._vitems.length; i++) {
+            item = this._vitems[i];
+            item.checkBounds(bounds);
         }
     }
 
-    public atEnd() {
-        if (this.horizontal) {
-            return this._container.position.x <= -this.contentSize.width + this.minWidth / 2 + this.$spacing / 2;
-        } else {
-            return this.container.position.y >= this.contentSize.height - this._minHeight / 2 - this.$spacing / 2;
+    /** 检查是否固定滚到底部 */
+    private checkEndSticky() {
+        if (this.$stickAtEnd && this._stickEndDirty && !this._animating) {
+            if (this.isMinSize || this.atEnd) {
+                this._stickEndDirty = false;
+            } else {
+                this.scrollToEnd(this.$bounceTime);
+            }
         }
     }
 
@@ -777,26 +797,48 @@ export abstract class VList extends Component {
      * @param delta 动画时间
      */
     public scrollTo(position: Vec3, delta: number = 0) {
+        if (this.isMinSize) {
+            position = this.startPos;
+        }
+        if (this._container.position.equals(position)) {
+            this.checkVirtualBounds();
+            return;
+        }
+
         this.stopScroll();
         this._animating = true;
-        tween(this._container)
-            .to(delta, { position: position })
-            .call(() => {
-                this._animating = false;
-                this.updateBounds();
-            }, this)
+        let vitem: VirtualItem;
+        let time = Date.now() + delta * 1000;
+        const self = this;
+        const end = function () {
+            if (self._toIndex != null) {
+                self._toIndex = null;
+            }
+            self._animating = false;
+            self.updateBounds();
+        };
+        const tw = tween(this._container)
+            .to(
+                delta,
+                { position },
+                {
+                    onUpdate() {
+                        if (time - Date.now() < 0) {
+                            tw.stop();
+                            end();
+                            return;
+                        }
+                        // 因为虚拟子项的尺寸可能发生变化，所以设置的位置可能不是最终的位置；
+                        // 因此在这里对动作进行了 Hack，使得滚动过程中可以更新最终的位置。
+                        if (self._toIndex != null) {
+                            vitem = self._vitems[self._toIndex];
+                            if (vitem) (<Vec3>(<any>tw)._actions[0]._originProps.position).set(vitem.position);
+                        }
+                    },
+                }
+            )
+            .call(end)
             .start();
-    }
-
-    /** 是否正在滚动动画中 */
-    public get animating() {
-        return this._animating;
-    }
-
-    /** 更新边界与回弹 */
-    private updateBounds() {
-        this.checkBounce();
-        this.checkVirtualBounds();
     }
 
     /**
@@ -806,7 +848,7 @@ export abstract class VList extends Component {
      */
     public scrollToIndex(index: number, delta: number = 0) {
         if (index == 0) {
-            this.scrollTo(this._startPos, delta);
+            this.scrollTo(this.startPos, delta);
             return;
         }
         const vitem = this._vitems[index];
@@ -819,6 +861,7 @@ export abstract class VList extends Component {
                 pos.y = -pos.y - vitem.h / 2 - this.$spacing / 2 + this._minHeight / 2;
                 pos.y = Math.min(pos.y, this.contentSize.height - this._minHeight / 2 - this.$spacing / 2);
             }
+            this._toIndex = index;
             this.scrollTo(pos, delta);
         }
     }
@@ -828,11 +871,7 @@ export abstract class VList extends Component {
      * @param delta 动画时间
      */
     public scrollToStart(delta: number = 0) {
-        if (this.horizontal) {
-            this.scrollToLeft(delta);
-        } else {
-            this.scrollToTop(delta);
-        }
+        this.scrollTo(this.startPos, delta);
     }
 
     /**
@@ -840,99 +879,36 @@ export abstract class VList extends Component {
      * @param delta 动画时间
      */
     public scrollToEnd(delta: number = 0) {
-        if (this.horizontal) {
-            this.scrollToRight(delta);
-        } else {
-            this.scrollToBottom(delta);
-        }
+        this.scrollTo(this.endPos, delta);
     }
 
     /**
-     * 滚动到最左侧
-     * @param delta 动画时间
+     * 获取子项尺寸
+     * @param index 索引
+     * @abstract
+     * @returns
      */
-    public scrollToLeft(delta: number = 0) {
-        if (this.horizontal) {
-            this.scrollToIndex(0, delta);
-        }
-    }
+    protected abstract getItemSize(index: number): [number, number];
 
     /**
-     * 滚动到最左侧
-     * @param delta 动画时间
+     * 添加视图子项
+     * @param index 索引
+     * @abstract
      */
-    public scrollToRight(delta: number = 0) {
-        if (this.horizontal) {
-            this.scrollToIndex(this.count - 1, delta);
-        }
-    }
+    protected abstract appendItem(index: number): Node;
 
     /**
-     * 滚动到最顶侧
-     * @param delta 动画时间
+     * 渲染视图子项
+     * @param item 子项
+     * @param index 索引
+     * @abstract
      */
-    public scrollToTop(delta: number = 0) {
-        if (this.vertical) {
-            this.scrollToIndex(0, delta);
-        }
-    }
+    protected abstract renderItem(item: Node, index: number): void;
 
     /**
-     * 滚动到最底侧
-     * @param delta 动画时间
+     * 回收视图子项
+     * @param item 子项
+     * @abstract
      */
-    public scrollToBottom(delta: number = 0) {
-        if (this.vertical) {
-            this.scrollToIndex(this.count - 1, delta);
-        }
-    }
-
-    /**
-     * 检查虚拟子项的边界
-     */
-    private checkVirtualBounds() {
-        const bounds = this.viewBounds;
-        for (let i = 0, item: VirtualItem; i < this._vitems.length; i++) {
-            item = this._vitems[i];
-            item.checkBounds(bounds);
-        }
-    }
-
-    protected lateUpdate(dt: number): void {
-        if (this._scrolling) {
-            if (this._scrollDelta <= 0) {
-                this.stopScroll();
-                this.checkBounce();
-                return;
-            }
-            if (this.checkBounce()) return;
-            this._scrollDirty = true;
-            this._scrollDelta -= dt * 0.1;
-            const speedX = this._scrollOffset.x * this._scrollDelta * this.$speed;
-            const speedY = this._scrollOffset.y * this._scrollDelta * this.$speed;
-            const pos = this._container.position;
-            if (this.horizontal) {
-                this._container.setPosition(pos.x + speedX, pos.y);
-            } else {
-                this._container.setPosition(pos.x, pos.y + speedY);
-            }
-        }
-        if (this._animating || this._scrollDirty) {
-            if (this._scrollDirty) this._scrollDirty = false;
-            this.checkVirtualBounds();
-        }
-    }
-
-    private checkSticky() {
-        if (this.$stickAtEnd && this._stickDirty && !this._animating) {
-            const atEnd = this.atEnd();
-            if (atEnd) {
-                this._stickDirty = false;
-            } else {
-                this.scrollToEnd(this.$bounceTime);
-            }
-        }
-    }
+    protected abstract recycleItem(item: Node): void;
 }
-
-VList.VirtualPool.add(VirtualItem);

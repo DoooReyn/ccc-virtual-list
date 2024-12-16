@@ -1,10 +1,10 @@
 import ReusableNodePool from "./ReusableNodePool";
-import { VList } from "./VList";
-import { _decorator, Label, Layout, misc, Node, Tween, tween, UIOpacity, UITransform } from "cc";
+import { VirtualList } from "./VirtualList";
+import { _decorator, Label, Layout, misc, Node, UITransform } from "cc";
 const { ccclass } = _decorator;
 
 @ccclass("TestVList")
-export class TestVList extends VList {
+export class TestVList extends VirtualList {
     private _vpool: ReusableNodePool;
 
     protected onLoad(): void {

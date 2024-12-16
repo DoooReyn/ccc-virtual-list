@@ -413,7 +413,7 @@
     "$direction": 1,
     "$layout": 0,
     "$spacing": 10,
-    "$stickAtEnd": false,
+    "$stickAtEnd": true,
     "$paddingLeft": 0,
     "$paddingRight": 0,
     "$paddingTop": 0,
@@ -841,7 +841,7 @@
     },
     "_inputFlag": 5,
     "_inputMode": 6,
-    "_maxLength": 120,
+    "_maxLength": 200,
     "_id": "c224yjxuxL8L6vTNmxp29U"
   },
   {
