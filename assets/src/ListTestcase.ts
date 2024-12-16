@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, EditBox, Label, Layout, UITransform, director, misc } from "cc";
+import { _decorator, Component, Node, EditBox, misc } from "cc";
 import { TestVList } from "./TestVList";
 const { ccclass, property } = _decorator;
 
