@@ -1,4 +1,4 @@
-import { Node, Prefab, AssetManager, instantiate, isValid, misc } from "cc";
+import { Node, Prefab, AssetManager, instantiate, misc } from "cc";
 import Hooks from "./Hooks";
 
 /** 模板节点支持类型 */
@@ -134,7 +134,8 @@ export default class ReusableNodePool {
                     this._recycleHooks.runWith(node);
                 }
                 node.removeFromParent();
-                pool.push(node);
+                // 延迟一帧回收，防止节点在当前帧又被取出
+                misc.callInNextTick(() => pool.push(node));
             } else {
                 throw new Error(`节点 ${node.name} 不属于该对象池，请检查调用方式.`);
             }
