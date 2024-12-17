@@ -35,7 +35,7 @@ const LIST_DIRCTION = Enum({
 
 /** 列表布局方式 */
 const LIST_LAYOUT = Enum({
-    /** 单个 */
+    /** 单项 */
     SINGLE: 0,
     /** 网格 */
     GRID: 1,
@@ -156,7 +156,7 @@ export abstract class VirtualList extends Component {
         return this.node.getComponent(UITransform).getBoundingBox();
     }
 
-    /** 是否单个布局 */
+    /** 是否单项布局 */
     public get singleLayout() {
         return this.$layout == LIST_LAYOUT.SINGLE;
     }
@@ -573,7 +573,7 @@ export abstract class VirtualList extends Component {
         }
     }
 
-    /** 构建单个布局 */
+    /** 构建单项布局 */
     private buildSingleLayout() {
         const hor = this.horizontal;
         let startX: number = 0;
@@ -828,7 +828,7 @@ export abstract class VirtualList extends Component {
         }
     }
 
-    /** 计算单个布局尺寸 */
+    /** 计算单项布局尺寸 */
     private calculateSingleSize() {
         let width = 0,
             height = 0,

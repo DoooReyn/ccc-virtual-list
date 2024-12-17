@@ -2,7 +2,7 @@ import { _decorator, Component, Node, EditBox, misc, Button, Sprite, Color } fro
 import { TestVList } from "./TestVList";
 const { ccclass, property } = _decorator;
 
-type Mode = "n" | "h" | "v" | "g";
+type Mode = "n" | "sh" | "sv" | "gh" | "gv";
 
 const COLOR = {
     ON: new Color(255, 255, 255),
@@ -22,83 +22,163 @@ export class ListTestcase extends Component {
     $vlist: TestVList = null;
 
     @property(TestVList)
-    $glist: TestVList = null;
+    $ghlist: TestVList = null;
+
+    @property(TestVList)
+    $gvlist: TestVList = null;
 
     @property(EditBox)
     $editbox: EditBox = null;
 
     @property(Node)
-    $hbtn: Node = null;
+    $shbtn: Node = null;
 
     @property(Node)
-    $vbtn: Node = null;
+    $svbtn: Node = null;
 
     @property(Node)
-    $gbtn: Node = null;
+    $ghbtn: Node = null;
+
+    @property(Node)
+    $gvbtn: Node = null;
+
+    @property(Node)
+    $gabtn: Node = null;
+
+    @property(Node)
+    $grbtn: Node = null;
+
+    @property(Node)
+    $startbtn: Node = null;
+
+    @property(Node)
+    $endbtn: Node = null;
 
     private _mode: Mode = "n";
 
     protected start(): void {
         (<any>window).canvas = this;
-        this.changeMode("g");
+        this.changeMode("sh");
     }
 
     protected onEnable(): void {
         this.$editbox.node.on(EditBox.EventType.EDITING_RETURN, this.onSendMsg, this);
-        this.$hbtn.on(Button.EventType.CLICK, this.onChangeModeH, this);
-        this.$vbtn.on(Button.EventType.CLICK, this.onChangeModeV, this);
-        this.$gbtn.on(Button.EventType.CLICK, this.onChangeModeG, this);
+        this.$shbtn.on(Button.EventType.CLICK, this.onChangeModeSH, this);
+        this.$svbtn.on(Button.EventType.CLICK, this.onChangeModeSV, this);
+        this.$ghbtn.on(Button.EventType.CLICK, this.onChangeModeGH, this);
+        this.$gvbtn.on(Button.EventType.CLICK, this.onChangeModeGV, this);
+        this.$gabtn.on(Button.EventType.CLICK, this.onAddItem, this);
+        this.$grbtn.on(Button.EventType.CLICK, this.onRemoveItem, this);
+        this.$startbtn.on(Button.EventType.CLICK, this.onScrollToStart, this);
+        this.$endbtn.on(Button.EventType.CLICK, this.onSrollToEnd, this);
     }
 
     protected onDisable(): void {
         this.$editbox.node.off(EditBox.EventType.EDITING_RETURN, this.onSendMsg, this);
-        this.$hbtn.off(Button.EventType.CLICK, this.onChangeModeH, this);
-        this.$vbtn.off(Button.EventType.CLICK, this.onChangeModeV, this);
-        this.$gbtn.off(Button.EventType.CLICK, this.onChangeModeG, this);
+        this.$shbtn.off(Button.EventType.CLICK, this.onChangeModeSH, this);
+        this.$svbtn.off(Button.EventType.CLICK, this.onChangeModeSV, this);
+        this.$ghbtn.off(Button.EventType.CLICK, this.onChangeModeGH, this);
+        this.$gvbtn.off(Button.EventType.CLICK, this.onChangeModeGV, this);
+        this.$gabtn.off(Button.EventType.CLICK, this.onAddItem, this);
+        this.$grbtn.off(Button.EventType.CLICK, this.onRemoveItem, this);
+        this.$startbtn.off(Button.EventType.CLICK, this.onScrollToStart, this);
+        this.$endbtn.off(Button.EventType.CLICK, this.onSrollToEnd, this);
     }
 
-    private get isModeH() {
-        return this._mode == "h";
+    private get isModeSH() {
+        return this._mode == "sh";
     }
 
-    private get isModeV() {
-        return this._mode == "v";
+    private get isModeSV() {
+        return this._mode == "sv";
     }
 
-    private get isModeG() {
-        return this._mode == "g";
+    private get isModeGH() {
+        return this._mode == "gh";
+    }
+
+    private get isModeGV() {
+        return this._mode == "gv";
     }
 
     private changeMode(mode: Mode) {
         if (this._mode == mode) return;
         this._mode = mode;
-        this.$hlist.node.active = mode == "h";
-        this.$vlist.node.active = mode == "v";
-        this.$glist.node.active = mode == "g";
-        this.$editbox.node.active = mode == "h" || mode == "v";
-        this.$hbtn.getComponent(Sprite).color = mode == "h" ? COLOR.ON : COLOR.OFF;
-        this.$vbtn.getComponent(Sprite).color = mode == "v" ? COLOR.ON : COLOR.OFF;
-        this.$gbtn.getComponent(Sprite).color = mode == "g" ? COLOR.ON : COLOR.OFF;
+        this.$hlist.node.active = this.isModeSH;
+        this.$vlist.node.active = this.isModeSV;
+        this.$ghlist.node.active = this.isModeGH;
+        this.$gvlist.node.active = this.isModeGV;
+        this.$editbox.node.active = this.isModeSH || this.isModeSV;
+        this.$gabtn.active = this.isModeGH || this.isModeGV;
+        this.$grbtn.active = this.isModeGH || this.isModeGV;
+        this.$shbtn.getComponent(Sprite).color = this.isModeSH ? COLOR.ON : COLOR.OFF;
+        this.$svbtn.getComponent(Sprite).color = this.isModeSV ? COLOR.ON : COLOR.OFF;
+        this.$ghbtn.getComponent(Sprite).color = this.isModeGH ? COLOR.ON : COLOR.OFF;
+        this.$gvbtn.getComponent(Sprite).color = this.isModeGV ? COLOR.ON : COLOR.OFF;
     }
 
-    private onChangeModeH() {
-        this.changeMode("h");
+    private onAddItem() {
+        const count = (Math.random() * 10 + 1) | 0;
+        const list = this.isModeGH ? this.$ghlist : this.$gvlist;
+        for (let i = 0; i < count; i++) {
+            list.insertEnd(((Math.random() * 100) | 0).toString());
+        }
     }
 
-    private onChangeModeV() {
-        this.changeMode("v");
+    private onRemoveItem() {
+        const list = this.isModeGH ? this.$ghlist : this.$gvlist;
+        if (list.count > 0) {
+            const index = (Math.random() * list.count) | 0;
+            list.removeAt(index);
+        }
     }
 
-    private onChangeModeG() {
-        this.changeMode("g");
+    private onChangeModeSH() {
+        this.changeMode("sh");
+    }
+
+    private onChangeModeSV() {
+        this.changeMode("sv");
+    }
+
+    private onChangeModeGH() {
+        this.changeMode("gh");
+    }
+
+    private onChangeModeGV() {
+        this.changeMode("gv");
+    }
+
+    private onScrollToStart() {
+        if (this.isModeSH) {
+            this.$hlist.scrollToStart(0.5);
+        } else if (this.isModeSV) {
+            this.$vlist.scrollToStart(0.5);
+        } else if (this.isModeGH) {
+            this.$ghlist.scrollToStart(0.5);
+        } else if (this.isModeGV) {
+            this.$gvlist.scrollToStart(0.5);
+        }
+    }
+
+    private onSrollToEnd() {
+        if (this.isModeSH) {
+            this.$hlist.scrollToEnd(0.5);
+        } else if (this.isModeSV) {
+            this.$vlist.scrollToEnd(0.5);
+        } else if (this.isModeGH) {
+            this.$ghlist.scrollToEnd(0.5);
+        } else if (this.isModeGV) {
+            this.$gvlist.scrollToEnd(0.5);
+        }
     }
 
     private onSendMsg() {
         const text = this.$editbox.string;
         if (text.length > 0) {
-            if (this.isModeH) {
+            if (this.isModeSH) {
                 this.$hlist.insertEnd(text);
-            } else if (this.isModeV) {
+            } else if (this.isModeSV) {
                 this.$vlist.insertEnd(text);
             }
         }

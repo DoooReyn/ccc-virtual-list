@@ -1,6 +1,6 @@
 import ReusableNodePool from "./ReusableNodePool";
 import { VirtualList } from "./VirtualList";
-import { _decorator, Label, Layout, misc, Node, UITransform } from "cc";
+import { _decorator, Label, Node, UITransform } from "cc";
 const { ccclass } = _decorator;
 
 @ccclass("TestVList")
@@ -11,6 +11,7 @@ export class TestVList extends VirtualList {
         super.onLoad();
         (<any>window)[this.node.name.toLowerCase()] = this;
         this._pool = new ReusableNodePool();
+        this._dataSource = [];
     }
 
     protected start(): void {
