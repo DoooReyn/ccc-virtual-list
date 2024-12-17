@@ -5,8 +5,8 @@ const { ccclass, property } = _decorator;
 type Mode = "n" | "h" | "v" | "g";
 
 const COLOR = {
-    ON: new Color(222, 222, 222),
-    OFF: new Color(100, 100, 100),
+    ON: new Color(255, 255, 255),
+    OFF: new Color(160, 160, 160),
 } as const;
 
 /**
