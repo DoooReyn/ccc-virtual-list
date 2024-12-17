@@ -179,9 +179,9 @@ export abstract class VirtualList extends Component {
     public get endPos() {
         const size = this.contentSize;
         if (this.horizontal) {
-            return new Vec3(-size.width + this._minWidth / 2 + this.$spacing / 2, this._startPos.y);
+            return new Vec3(-size.width + this._minWidth / 2, this._startPos.y);
         } else {
-            return new Vec3(this._startPos.x, size.height - this.minHeight / 2 - this.$spacing / 2);
+            return new Vec3(this._startPos.x, size.height - this.minHeight / 2);
         }
     }
 
@@ -193,18 +193,18 @@ export abstract class VirtualList extends Component {
     /** 容器是否在起始位置 */
     public get atStart() {
         if (this.horizontal) {
-            return this._container.position.x >= this._startPos.x + this.$spacing / 2;
+            return this._container.position.x >= this._startPos.x;
         } else {
-            return this.container.position.y <= this._startPos.y + this.$spacing / 2;
+            return this.container.position.y <= this._startPos.y;
         }
     }
 
     /** 容器是否在结束位置 */
     public get atEnd() {
         if (this.horizontal) {
-            return this._container.position.x <= -this.contentSize.width + this.minWidth / 2 + this.$spacing / 2;
+            return this._container.position.x <= -this.contentSize.width + this.minWidth / 2;
         } else {
-            return this.container.position.y >= this.contentSize.height - this._minHeight / 2 - this.$spacing / 2;
+            return this.container.position.y >= this.contentSize.height - this._minHeight / 2;
         }
     }
 
@@ -531,14 +531,14 @@ export abstract class VirtualList extends Component {
                 item = this._vitems[i];
                 item.i = i;
                 if (hor) {
-                    item.x = startX + this.$spacing;
+                    item.x = startX;
                     item.y = 0;
-                    startX += item.w;
+                    startX += item.w + this.$spacing;
                 } else {
-                    startY -= this.$spacing;
                     startY -= item.h;
                     item.x = 0;
                     item.y = startY;
+                    startY -= this.$spacing;
                 }
                 item.w = item.w;
                 item.h = item.h;
@@ -746,9 +746,9 @@ export abstract class VirtualList extends Component {
         }
         if (count > 0) {
             if (hor) {
-                width += (count + 1) * spacing;
+                width += (count - 1) * spacing;
             } else {
-                height += (count + 1) * spacing;
+                height += (count - 1) * spacing;
             }
         }
         width = Math.max(width, this._minWidth);

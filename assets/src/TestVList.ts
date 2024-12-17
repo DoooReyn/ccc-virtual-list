@@ -5,56 +5,66 @@ const { ccclass } = _decorator;
 
 @ccclass("TestVList")
 export class TestVList extends VirtualList {
-    private _vpool: ReusableNodePool;
+    private _pool: ReusableNodePool;
 
     protected onLoad(): void {
         super.onLoad();
-        this._vpool = new ReusableNodePool();
+        this._pool = new ReusableNodePool();
     }
 
     protected start(): void {
-        this._vpool.add(this.node.parent.getChildByName("HItem"));
-        this._vpool.add(this.node.parent.getChildByName("VItem"));
+        this._pool.add(this.node.parent.getChildByName("HItem"));
+        this._pool.add(this.node.parent.getChildByName("VItem"));
         this.data = [];
         (<any>window).vlist = this;
     }
 
     protected onDestroy(): void {
-        this._vpool.clear();
+        this._pool.clear();
         super.onDestroy();
     }
 
     protected appendItem(index: number) {
-        return this._vpool.acquire(this.horizontal ? "HItem" : "VItem");
+        const item = this._pool.acquire(this.horizontal ? "HItem" : "VItem");
+        item.on(Node.EventType.SIZE_CHANGED, this.onItemSizeChanged.bind(this, index), this)
+        // misc.callInNextTick(() => {
+        //     // 需要将新的尺寸更新到虚拟子项中
+        //     item.getComponent(Layout).updateLayout(true);
+        //     this.onItemSizeChanged(index);
+        // });
+        return item;
     }
 
     protected renderItem(item: Node, index: number) {
         const text = this._dataSource[index];
         item.getChildByName("Label").getComponent(Label).string = text;
-        misc.callInNextTick(() => {
-            // 需要将新的尺寸更新到虚拟子项中
-            item.getComponent(Layout).updateLayout(true);
-            this.onItemSizeChanged(index);
-        });
     }
 
     protected onItemSizeChanged(index: number) {
         const item = this.getItemAt(index);
         if (item) {
-            const height = item.getComponent(UITransform).height;
-            this.updateItemHeight(index, height);
+            const { width, height } = item.getComponent(UITransform);
+            if (this.horizontal) {
+                this.updateItemWidth(index, width);
+            } else {
+                this.updateItemHeight(index, height);
+            }
         }
     }
 
     protected recycleItem(item: Node): void {
-        this._vpool.recycle(item);
+        this._pool.recycle(item);
         item.targetOff(this);
         item.getChildByName("Label").getComponent(Label).string = "";
-        item.getComponent(UITransform).setContentSize(640, 52);
+        item.getComponent(UITransform).setContentSize(...this.getItemSize(0));
         item.active = false;
     }
 
     protected getItemSize(index: number): [number, number] {
-        return [640, 52];
+        if (this.horizontal) {
+            return [120, 48];
+        } else {
+            return [640, 52];
+        }
     }
 }
