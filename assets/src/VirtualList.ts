@@ -41,6 +41,20 @@ const LIST_LAYOUT = Enum({
     GRID: 1,
 });
 
+/** 列表滚动方式 */
+enum LIST_SCROLL_MODE {
+    /** 停止滚动 */
+    STOP = -1,
+    /** 滚到指定位置 */
+    POSITION = 0,
+    /** 滚到指定索引位置 */
+    INDEX,
+    /** 滚到起始处 */
+    START,
+    /** 滚到结束处 */
+    END,
+}
+
 /**
  * 虚拟列表
  */
@@ -86,6 +100,8 @@ export abstract class VirtualList extends Component {
     protected _stickEndDirty: boolean = false;
     /** 滚动到索引 */
     private _toIndex: number | null = null;
+    /** 滚动方式 */
+    private _scrollMode: LIST_SCROLL_MODE = LIST_SCROLL_MODE.STOP;
 
     @property({ displayName: "调试绘制", displayOrder: 0 })
     protected $debugDraw: boolean = false;
@@ -548,10 +564,10 @@ export abstract class VirtualList extends Component {
         this.drawContainerBounds();
         if (this.atStart) {
             this._container.setPosition(this.startPos);
-            misc.callInNextTick(() => this.scrollToStart(this.bouncableTime));
+            misc.callInNextTick(() => this.scrollToStart());
         } else if (this.atEnd) {
             this._container.setPosition(this.endPos);
-            misc.callInNextTick(() => this.scrollToEnd(this.bouncableTime));
+            misc.callInNextTick(() => this.scrollToEnd());
         } else {
             this.checkVirtualBounds();
         }
@@ -886,6 +902,7 @@ export abstract class VirtualList extends Component {
     /** 停止滚动 */
     public stopScroll() {
         Tween.stopAllByTarget(this._container);
+        this.unschedule(this.checkScrollMode);
         this._scrolling = false;
         this._scrollDelta = 0;
         this._animating = false;
@@ -893,67 +910,28 @@ export abstract class VirtualList extends Component {
     }
 
     /**
-     * 滚动到指定位置
-     * @param position 目标位置
-     * @param delta 动画时间
+     * 是否停在指定索引位置
+     * @param index 索引
+     * @returns
      */
-    public scrollTo(position: Vec3, delta: number = 0) {
-        if (this.isMinSize) {
-            position = this.startPos;
-        }
-        if (this._container.position.equals(position)) {
-            this.checkVirtualBounds();
-            return;
-        }
-
-        this.stopScroll();
-
-        delta = delta || 0.016;
-        this._animating = true;
-        let vitem: VirtualItem;
-        let time = Date.now() + delta * 1000 * 2; // 这里的 2 是为了防止动画时间太短，导致有误差
-        const self = this;
-        const end = function () {
-            if (self._toIndex != null) {
-                self._toIndex = null;
-            }
-            self._animating = false;
-            self.updateBounds();
-        };
-        const tw = tween(this._container)
-            .to(
-                delta,
-                { position },
-                {
-                    onUpdate() {
-                        if (time - Date.now() < 0) {
-                            tw.stop();
-                            end();
-                            return;
-                        }
-                        // 因为虚拟子项的尺寸可能发生变化，所以设置的位置可能不是最终的位置；
-                        // 因此在这里对动作进行了 Hack，使得滚动过程中可以更新最终的位置。
-                        if (self._toIndex != null) {
-                            vitem = self._vitems[self._toIndex];
-                            if (vitem) (<Vec3>(<any>tw)._actions[0]._originProps.position).set(vitem.position);
-                        }
-                    },
-                }
-            )
-            .call(end)
-            .start();
+    private isStopAtIndex(index: number) {
+        const pos = this.getVirtualPositionAt(index);
+        return pos && this._container.position.equals(pos);
     }
 
-    /**
-     * 滚动到指定索引
-     * @param index 索引
-     * @param delta 动画时间
-     */
-    public scrollToIndex(index: number, delta: number = 0) {
-        if (index == 0) {
-            this.scrollTo(this.startPos, delta);
-            return;
-        }
+    /** 是否停在起始位置 */
+    private isStopAtStart() {
+        return this._container.position.equals(this.startPos);
+        // return this.isStopAtIndex(0);
+    }
+
+    /** 是否停在结束位置 */
+    private isStopAtEnd() {
+        return this._container.position.equals(this.endPos);
+        // return this.isStopAtIndex(this.count - 1);
+    }
+
+    private getVirtualPositionAt(index: number) {
         const vitem = this._vitems[index];
         if (vitem) {
             const pos = vitem.position;
@@ -966,7 +944,106 @@ export abstract class VirtualList extends Component {
                 pos.y = Math.min(pos.y, this.contentSize.height - this._minHeight / 2 - this.$spacing / 2);
                 if (this.gridLayout) pos.x = this._startPos.x;
             }
+            return pos;
+        }
+        return null;
+    }
+
+    /** 检查是否滚动到指定位置 */
+    private checkScrollMode() {
+        let ok: boolean | undefined;
+        switch (this._scrollMode) {
+            case LIST_SCROLL_MODE.INDEX:
+                ok = this.isStopAtIndex(this._toIndex);
+                break;
+            case LIST_SCROLL_MODE.END:
+                ok = this.isStopAtEnd();
+                break;
+            case LIST_SCROLL_MODE.START:
+                ok = this.isStopAtStart();
+                break;
+            default:
+                break;
+        }
+        if (ok != undefined) {
+            if (ok) {
+                this._scrollMode = LIST_SCROLL_MODE.STOP;
+                this.stopScroll();
+                this.updateBounds();
+            } else {
+                this.scrollToIndex(this._toIndex);
+            }
+        }
+    }
+
+    /**
+     * 滚动到指定位置
+     * @param position 目标位置
+     * @param delta 动画时间
+     */
+    private scrollTo(position: Vec3, delta: number = 0) {
+        if (this.isMinSize) {
+            position = this.startPos;
+        }
+        if (this._container.position.equals(position)) {
+            this.checkVirtualBounds();
+            return;
+        }
+
+        this.stopScroll();
+        delta = delta || 0.016;
+        this._animating = true;
+        const self = this;
+        const end = function () {
+            self.updateBounds();
+            self.schedule(self.checkScrollMode);
+        };
+        const tw = tween(this._container)
+            .to(
+                delta,
+                { position }
+                // {
+                //     onUpdate() {
+                //         if (time - Date.now() < 0) {
+                //             const index = self._toIndex;
+                //             tw.stop();
+                //             end();
+                //             self.scrollTo(position, 0);
+                //             return;
+                //         }
+                //         // 因为虚拟子项的尺寸可能发生变化，所以设置的位置可能不是最终的位置；
+                //         // 因此在这里对动作进行了 Hack，使得滚动过程中可以更新最终的位置。
+                //         if (self._toIndex != null) {
+                //             vitem = self._vitems[self._toIndex];
+                //             if (vitem) (<Vec3>(<any>tw)._actions[0]._originProps.position).set(vitem.position);
+                //         }
+                //     },
+                // }
+            )
+            .call(end)
+            .start();
+    }
+
+    /**
+     * 滚动到指定索引
+     * @param index 索引
+     * @param delta 动画时间
+     */
+    public scrollToIndex(index: number, delta: number = 0) {
+        if (index == 0) {
+            this.scrollToStart(delta);
+            return;
+        }
+
+        if (index == this.count - 1) {
+            this.scrollToEnd(delta);
+            return;
+        }
+
+        const pos = this.getVirtualPositionAt(index);
+        if (pos) {
             this._toIndex = index;
+            this._scrollMode = LIST_SCROLL_MODE.INDEX;
             this.scrollTo(pos, delta);
         }
     }
@@ -976,6 +1053,8 @@ export abstract class VirtualList extends Component {
      * @param delta 动画时间
      */
     public scrollToStart(delta: number = 0) {
+        this._scrollMode = LIST_SCROLL_MODE.START;
+        this._toIndex = 0;
         this.scrollTo(this.startPos, delta);
     }
 
@@ -984,6 +1063,8 @@ export abstract class VirtualList extends Component {
      * @param delta 动画时间
      */
     public scrollToEnd(delta: number = 0) {
+        this._scrollMode = LIST_SCROLL_MODE.END;
+        this._toIndex = this.count - 1;
         this.scrollTo(this.endPos, delta);
     }
 

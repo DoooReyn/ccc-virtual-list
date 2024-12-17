@@ -35,6 +35,7 @@ export default class VirtualItem extends ReusableObject {
         const intersects = this._rect.intersects(bounds);
         // @ts-ignore
         intersects ? this.list.onItemShow(this) : this.list.onItemHide(this);
+        return intersects;
     }
     /** 重置 */
     protected reset() {
