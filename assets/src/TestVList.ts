@@ -9,6 +9,7 @@ export class TestVList extends VirtualList {
 
     protected onLoad(): void {
         super.onLoad();
+        (<any>window).vlist = this;
         this._pool = new ReusableNodePool();
     }
 
@@ -16,7 +17,6 @@ export class TestVList extends VirtualList {
         this._pool.add(this.node.parent.getChildByName("HItem"));
         this._pool.add(this.node.parent.getChildByName("VItem"));
         this.data = [];
-        (<any>window).vlist = this;
     }
 
     protected onDestroy(): void {
@@ -27,11 +27,6 @@ export class TestVList extends VirtualList {
     protected appendItem(index: number) {
         const item = this._pool.acquire(this.horizontal ? "HItem" : "VItem");
         item.on(Node.EventType.SIZE_CHANGED, this.onItemSizeChanged.bind(this, index), this)
-        // misc.callInNextTick(() => {
-        //     // 需要将新的尺寸更新到虚拟子项中
-        //     item.getComponent(Layout).updateLayout(true);
-        //     this.onItemSizeChanged(index);
-        // });
         return item;
     }
 
