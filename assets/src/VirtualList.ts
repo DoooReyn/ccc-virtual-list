@@ -117,6 +117,8 @@ export abstract class VirtualList extends Component {
     protected $bouncable = true;
     @property({ displayName: "回弹时间", group: { id: "4", name: "回弹", displayOrder: 4 } })
     protected $bounceTime = 0.1;
+    @property({ displayName: "网格数量", type: CCInteger, group: { id: "5", name: "网格参数", displayOrder: 5 } })
+    protected $grids: number = 1;
 
     /** 是否水平滚动 */
     public get horizontal() {
@@ -138,9 +140,22 @@ export abstract class VirtualList extends Component {
         return this.node.getComponent(UITransform).getBoundingBox();
     }
 
-    /**
-     * 容器尺寸
-     */
+    /** 是否单个布局 */
+    public get singleLayout() {
+        return this.$layout == LIST_LAYOUT.SINGLE;
+    }
+
+    /** 是否网格布局 */
+    public get gridLayout() {
+        return this.$layout == LIST_LAYOUT.GRID;
+    }
+
+    /** 一排分成 N 份 */
+    public get grids() {
+        return this.gridLayout ? this.$grids : 1;
+    }
+
+    /** 容器尺寸 */
     public get contentSize() {
         return this._containerTransform.contentSize;
     }
@@ -344,7 +359,7 @@ export abstract class VirtualList extends Component {
     private drawContainerBounds() {
         if (this.$debugDraw) {
             const { width, height } = this._containerTransform.contentSize;
-            const pos = this.horizontal ? new Vec3(0, -width / 2) : new Vec3(-width / 2, -height);
+            const pos = this.horizontal ? new Vec3(0, -height / 2) : new Vec3(-width / 2, -height);
             const containerG = this._container.getComponent(Graphics);
             containerG.clear();
             containerG.lineWidth = 2;
@@ -520,8 +535,30 @@ export abstract class VirtualList extends Component {
         }
     }
 
-    /** 重建虚拟子项 */
+    /** 构建虚拟子项 */
     protected buildVirtualItems() {
+        if (this.singleLayout) {
+            this.buildSingleLayout();
+        } else {
+            this.buildGridLayout();
+        }
+
+        const size = this.calculateSize();
+        this._containerTransform.setContentSize(size);
+        this.drawContainerBounds();
+        if (this.atStart) {
+            this._container.setPosition(this.startPos);
+            misc.callInNextTick(() => this.scrollToStart(this.bouncableTime));
+        } else if (this.atEnd) {
+            this._container.setPosition(this.endPos);
+            misc.callInNextTick(() => this.scrollToEnd(this.bouncableTime));
+        } else {
+            this.checkVirtualBounds();
+        }
+    }
+
+    /** 构建单个布局 */
+    private buildSingleLayout() {
         const hor = this.horizontal;
         let startX: number = 0;
         let startY: number = 0;
@@ -544,18 +581,56 @@ export abstract class VirtualList extends Component {
                 item.h = item.h;
             }
         }
+    }
 
-        const size = this.calculateSize();
-        this._containerTransform.setContentSize(size);
-        this.drawContainerBounds();
-        if (this.atStart) {
-            this._container.setPosition(this.startPos);
-            misc.callInNextTick(() => this.scrollToStart(this.bouncableTime));
-        } else if (this.atEnd) {
-            this._container.setPosition(this.endPos);
-            misc.callInNextTick(() => this.scrollToEnd(this.bouncableTime));
-        } else {
-            this.checkVirtualBounds();
+    /** 构建网格布局 */
+    private buildGridLayout() {
+        if (this._dataSource && this._dataSource.length > 0) {
+            const hor = this.horizontal;
+            let startX: number = 0;
+            let startY: number = 0;
+            const count = this._dataSource.length;
+            const grids = this.grids;
+            const rows = Math.ceil(count / grids);
+            const is = this.getItemSize(0);
+            const size = new Size(...is);
+            const spacing = this.$spacing;
+            if (hor) {
+                size.height = this._minHeight;
+            } else {
+                size.width = this._minWidth;
+            }
+            let item: VirtualItem;
+            let i = 0;
+            for (let r = 0; r < rows; r++) {
+                if (hor) {
+                    startY = 0;
+                } else {
+                    startX = 0;
+                    startY -= size.height;
+                }
+                for (let c = 0; c < grids; c++) {
+                    i = r * grids + c;
+                    if (i >= count) return;
+                    item = this._vitems[i];
+                    item.i = i;
+                    if (hor) {
+                        item.x = startX;
+                        item.y = startY + size.height / 2 - is[1] / 2 - ((size.height - is[1]) / (grids - 1)) * c;
+                    } else {
+                        item.x = startX - size.width / 2 + is[0] / 2 + ((size.width - is[0]) / (grids - 1)) * c;
+                        item.y = startY;
+                    }
+                    item.w = item.w;
+                    item.h = item.h;
+                }
+                if (hor) {
+                    startX += is[0];
+                    startX += spacing;
+                } else {
+                    startY -= spacing;
+                }
+            }
         }
     }
 
@@ -730,6 +805,15 @@ export abstract class VirtualList extends Component {
 
     /** 计算容器尺寸 */
     private calculateSize() {
+        if (this.singleLayout) {
+            return this.calculateSingleSize();
+        } else {
+            return this.calculateGridSize();
+        }
+    }
+
+    /** 计算单个布局尺寸 */
+    private calculateSingleSize() {
         let width = 0,
             height = 0,
             size: [number, number];
@@ -750,6 +834,23 @@ export abstract class VirtualList extends Component {
             } else {
                 height += (count - 1) * spacing;
             }
+        }
+        width = Math.max(width, this._minWidth);
+        height = Math.max(height, this._minHeight);
+        return new Size(width, height);
+    }
+
+    /** 计算网格布局尺寸 */
+    private calculateGridSize() {
+        const hor = this.horizontal;
+        const spacing = this.$spacing;
+        const count = this.count;
+        const row = Math.ceil(count / this.grids);
+        let [width, height] = this.getItemSize(0);
+        if (hor) {
+            width = width * row + (row - 1) * spacing;
+        } else {
+            height = height * row + (row - 1) * spacing;
         }
         width = Math.max(width, this._minWidth);
         height = Math.max(height, this._minHeight);
@@ -806,9 +907,11 @@ export abstract class VirtualList extends Component {
         }
 
         this.stopScroll();
+
+        delta = delta || 0.016;
         this._animating = true;
         let vitem: VirtualItem;
-        let time = Date.now() + delta * 1000;
+        let time = Date.now() + delta * 1000 * 2; // 这里的 2 是为了防止动画时间太短，导致有误差
         const self = this;
         const end = function () {
             if (self._toIndex != null) {
@@ -857,9 +960,11 @@ export abstract class VirtualList extends Component {
             if (this.horizontal) {
                 pos.x = -pos.x - this._minWidth / 2 + this.$spacing / 2 + vitem.w / 2;
                 pos.x = Math.max(pos.x, -this.contentSize.width + this.minWidth / 2 + this.$spacing / 2);
+                if (this.gridLayout) pos.y = this._startPos.y;
             } else {
                 pos.y = -pos.y - vitem.h / 2 - this.$spacing / 2 + this._minHeight / 2;
                 pos.y = Math.min(pos.y, this.contentSize.height - this._minHeight / 2 - this.$spacing / 2);
+                if (this.gridLayout) pos.x = this._startPos.x;
             }
             this._toIndex = index;
             this.scrollTo(pos, delta);

@@ -21,6 +21,9 @@ export class ListTestcase extends Component {
     @property(TestVList)
     $vlist: TestVList = null;
 
+    @property(TestVList)
+    $glist: TestVList = null;
+
     @property(EditBox)
     $editbox: EditBox = null;
 
@@ -37,7 +40,7 @@ export class ListTestcase extends Component {
 
     protected start(): void {
         (<any>window).canvas = this;
-        this.changeMode("h");
+        this.changeMode("g");
     }
 
     protected onEnable(): void {
@@ -71,6 +74,7 @@ export class ListTestcase extends Component {
         this._mode = mode;
         this.$hlist.node.active = mode == "h";
         this.$vlist.node.active = mode == "v";
+        this.$glist.node.active = mode == "g";
         this.$editbox.node.active = mode == "h" || mode == "v";
         this.$hbtn.getComponent(Sprite).color = mode == "h" ? COLOR.ON : COLOR.OFF;
         this.$vbtn.getComponent(Sprite).color = mode == "v" ? COLOR.ON : COLOR.OFF;

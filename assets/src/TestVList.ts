@@ -9,13 +9,14 @@ export class TestVList extends VirtualList {
 
     protected onLoad(): void {
         super.onLoad();
-        (<any>window).vlist = this;
+        (<any>window)[this.node.name.toLowerCase()] = this;
         this._pool = new ReusableNodePool();
     }
 
     protected start(): void {
         this._pool.add(this.node.parent.getChildByName("HItem"));
         this._pool.add(this.node.parent.getChildByName("VItem"));
+        this._pool.add(this.node.parent.getChildByName("GItem"));
         this.data = [];
     }
 
@@ -25,9 +26,13 @@ export class TestVList extends VirtualList {
     }
 
     protected appendItem(index: number) {
-        const item = this._pool.acquire(this.horizontal ? "HItem" : "VItem");
-        item.on(Node.EventType.SIZE_CHANGED, this.onItemSizeChanged.bind(this, index), this)
-        return item;
+        if (this.gridLayout) {
+            return this._pool.acquire("GItem");
+        } else {
+            const item = this._pool.acquire(this.horizontal ? "HItem" : "VItem");
+            item.on(Node.EventType.SIZE_CHANGED, this.onItemSizeChanged.bind(this, index), this);
+            return item;
+        }
     }
 
     protected renderItem(item: Node, index: number) {
@@ -56,6 +61,9 @@ export class TestVList extends VirtualList {
     }
 
     protected getItemSize(index: number): [number, number] {
+        if (this.gridLayout) {
+            return [48, 48];
+        }
         if (this.horizontal) {
             return [120, 48];
         } else {
