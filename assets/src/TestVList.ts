@@ -1,8 +1,10 @@
+import { ListTestItemPool } from "./ListTestcase";
 import ReusableNodePool from "./ReusableNodePool";
 import { VirtualList } from "./VirtualList";
 import { _decorator, Label, Node, UITransform } from "cc";
 const { ccclass } = _decorator;
 
+/** 诗词歌赋1 */
 const POETRY1 = [
     "《永遇乐·京口北固亭怀古》\n辛弃疾〔宋〕",
     "千古江山",
@@ -31,6 +33,7 @@ const POETRY1 = [
     "尚能饭否？",
 ] as const;
 
+/** 诗词歌赋2 */
 const POETRY2 = [
     "《",
     "江",
@@ -135,6 +138,7 @@ const POETRY2 = [
     "。",
 ] as const;
 
+/** 默认数据 */
 const DEFAULT_DATA_SOURCE = {
     shlist: POETRY1,
     svlist: POETRY1,
@@ -142,24 +146,11 @@ const DEFAULT_DATA_SOURCE = {
     gvlist: POETRY2,
 } as const;
 
+/**
+ * 虚拟列表测试
+ */
 @ccclass("TestVList")
 export class TestVList extends VirtualList {
-    private _pool: ReusableNodePool;
-
-    protected onLoad(): void {
-        super.onLoad();
-        this._pool = new ReusableNodePool();
-        if (this.singleLayout) {
-            if (this.horizontal) {
-                this._pool.add(this.node.parent.getChildByName("HItem"));
-            } else {
-                this._pool.add(this.node.parent.getChildByName("VItem"));
-            }
-        } else {
-            this._pool.add(this.node.parent.getChildByName("GItem"));
-        }
-    }
-
     protected start(): void {
         const exportName = this.node.name.toLowerCase();
         (<any>window)[exportName] = this;
@@ -167,15 +158,15 @@ export class TestVList extends VirtualList {
     }
 
     protected onDestroy(): void {
-        this._pool.clear();
+        ListTestItemPool.inst.clear();
         super.onDestroy();
     }
 
     protected appendItem(index: number) {
         if (this.gridLayout) {
-            return this._pool.acquire("GItem");
+            return ListTestItemPool.inst.acquire("GItem");
         } else {
-            const item = this._pool.acquire(this.horizontal ? "HItem" : "VItem");
+            const item = ListTestItemPool.inst.acquire(this.horizontal ? "HItem" : "VItem");
             item.on(Node.EventType.SIZE_CHANGED, this.onItemSizeChanged.bind(this, index), this);
             return item;
         }
@@ -199,7 +190,7 @@ export class TestVList extends VirtualList {
     }
 
     protected recycleItem(item: Node): void {
-        this._pool.recycle(item);
+        ListTestItemPool.inst.recycle(item);
         item.targetOff(this);
         item.getChildByName("Label").getComponent(Label).string = "";
         item.getComponent(UITransform).setContentSize(...this.getItemSize(0));

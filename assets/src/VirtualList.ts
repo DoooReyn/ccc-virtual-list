@@ -58,6 +58,7 @@ enum LIST_SCROLL_MODE {
 
 /**
  * 虚拟列表
+ * @abstract
  */
 @ccclass("VirtualList")
 export abstract class VirtualList extends Component {
@@ -929,6 +930,11 @@ export abstract class VirtualList extends Component {
         // return this.isStopAtIndex(this.count - 1);
     }
 
+    /**
+     * 获取虚拟子项位置
+     * @param index 索引
+     * @returns 
+     */
     private getVirtualPositionAt(index: number) {
         const vitem = this._vitems[index];
         if (vitem) {

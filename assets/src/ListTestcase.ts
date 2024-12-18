@@ -1,5 +1,7 @@
-import { _decorator, Component, Node, EditBox, misc, Button, Sprite, Color } from "cc";
+import { _decorator, Component, Node, EditBox, misc, Button, Sprite, Color, resources, Prefab } from "cc";
 import { TestVList } from "./TestVList";
+import Hooks from "./Hooks";
+import ReusableNodePool from "./ReusableNodePool";
 const { ccclass, property } = _decorator;
 
 type Mode = "n" | "sh" | "sv" | "gh" | "gv";
@@ -8,6 +10,37 @@ const COLOR = {
     ON: new Color(255, 255, 255),
     OFF: new Color(160, 160, 160),
 } as const;
+
+class QueueLoader {
+    private _hooks: Hooks;
+    constructor(private _count: number = 0) {
+        this._hooks = new Hooks();
+    }
+    dec() {
+        this._count--;
+        if (this._count <= 0) {
+            this._count = 0;
+            this._hooks.run();
+        }
+    }
+    onComplete(hook: Function, thisArg: any) {
+        this._hooks.clear();
+        this._hooks.set(hook, thisArg, true);
+    }
+    offComplete() {
+        this._hooks.clear();
+    }
+}
+
+export class ListTestItemPool extends ReusableNodePool {
+    private static _inst: ListTestItemPool;
+    static get inst() {
+        if (!this._inst) {
+            this._inst = new ListTestItemPool();
+        }
+        return this._inst;
+    }
+}
 
 /**
  * 虚拟列表测试示例
@@ -58,6 +91,18 @@ export class ListTestcase extends Component {
 
     protected start(): void {
         (<any>window).canvas = this;
+        const queueLoader = new QueueLoader(3);
+        queueLoader.onComplete(this.onLoadComplete, this);
+        const oncomplete = (err: Error, res: Prefab) => {
+            if (res) ListTestItemPool.inst.add(res);
+            queueLoader.dec();
+        };
+        resources.load("HItem", Prefab, oncomplete);
+        resources.load("VItem", Prefab, oncomplete);
+        resources.load("GItem", Prefab, oncomplete);
+    }
+
+    private onLoadComplete() {
         this.changeMode("sh");
     }
 

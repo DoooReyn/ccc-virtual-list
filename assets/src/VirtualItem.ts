@@ -20,6 +20,7 @@ export default class VirtualItem extends ReusableObject {
     public l: VirtualList = null;
     /** 矩形边界 */
     private _r: Rect = new Rect();
+
     /** 实际子项的位置 */
     public get position() {
         if (this.l.horizontal) {
@@ -28,6 +29,7 @@ export default class VirtualItem extends ReusableObject {
             return new Vec3(this.x, this.y + this.h / 2, 0);
         }
     }
+
     /**
      * 检查子项边界
      * @param bounds 容器边界
@@ -37,22 +39,12 @@ export default class VirtualItem extends ReusableObject {
         this._r.set(this.x + x, this.y + y, this.w, this.h);
         return this._r.intersects(bounds);
     }
+
     /** 检查子项边界 */
     public checkItemBounds() {
-        const intersects = this.checkBounds(this.l.viewBounds);
-        // const ritem = this.l.getItemAt(this.i);
-        // if (ritem) {
-        //     if (intersects && !ritem.active) {
-        //         this.l.onItemShow(this);
-        //     }
-        //     if (!intersects && ritem.active) {
-        //         this.l.onItemHide(this);
-        //     }
-        // } else {
-        //     intersects ? this.l.onItemShow(this) : this.l.onItemHide(this);
-        // }
-        intersects ? this.l.onItemShow(this) : this.l.onItemHide(this);
+        this.checkBounds(this.l.viewBounds) ? this.l.onItemShow(this) : this.l.onItemHide(this);
     }
+
     /** 重置 */
     protected reset() {
         this.i = this.w = this.h = this.x = this.y = 0;
