@@ -20,6 +20,7 @@ import {
 } from "cc";
 import ReusableObjectPool from "./ReusableObjectPool";
 import VirtualItem from "./VirtualItem";
+import { VirtualItemPool } from "./VirtualItemPool";
 const { ccclass, property } = _decorator;
 
 /** 虚拟子项的索引标识 */
@@ -60,8 +61,6 @@ enum LIST_SCROLL_MODE {
  */
 @ccclass("VirtualList")
 export abstract class VirtualList extends Component {
-    /** 虚拟子项对象池 */
-    public static VirtualPool: ReusableObjectPool = null;
     /** 容器最小宽度 */
     private _minWidth: number = 0;
     /** 容器最小高度 */
@@ -260,12 +259,6 @@ export abstract class VirtualList extends Component {
     }
 
     protected onLoad(): void {
-        // 初始化虚拟子项对象池
-        if (!VirtualList.VirtualPool) {
-            VirtualList.VirtualPool = new ReusableObjectPool();
-            VirtualList.VirtualPool.add(VirtualItem);
-        }
-
         // 计算容器最小尺寸
         const { width, height } = this.node.getComponent(UITransform);
         const mw = width - this.$paddingLeft - this.$paddingRight;
@@ -529,8 +522,8 @@ export abstract class VirtualList extends Component {
      */
     protected acquireVirtualItem(index: number) {
         const [w, h] = this.preGetItemSize(index);
-        const vitem = VirtualList.VirtualPool.acqruire<VirtualItem>(VirtualItem);
-        vitem.list = this;
+        const vitem = VirtualItemPool.inst.acqruire<VirtualItem>(VirtualItem);
+        vitem.l = this;
         vitem.w = w;
         vitem.h = h;
         vitem.i = index;
@@ -547,7 +540,7 @@ export abstract class VirtualList extends Component {
             const ritem = this.getItemAt(index, false);
             if (ritem) this.recycleItem(ritem);
             this._vitems.splice(index, 1);
-            VirtualList.VirtualPool.recycle(vitem);
+            VirtualItemPool.inst.recycle(vitem);
         }
     }
 
@@ -685,10 +678,12 @@ export abstract class VirtualList extends Component {
      * @param height 高度
      */
     protected updateItemSize(index: number, width: number, height: number) {
-        if (this._vitems[index]) {
-            this._vitems[index].w = width;
-            this._vitems[index].h = height;
-            this.buildVirtualItems();
+        if (this.singleLayout && this._vitems[index]) {
+            if (this._vitems[index].w != width || this._vitems[index].h != height) {
+                this._vitems[index].w = width;
+                this._vitems[index].h = height;
+                this.buildVirtualItems();
+            }
         }
     }
 
@@ -698,7 +693,7 @@ export abstract class VirtualList extends Component {
      * @param width 宽度
      */
     protected updateItemWidth(index: number, width: number) {
-        if (this._vitems[index]) {
+        if (this.singleLayout && this._vitems[index] && this._vitems[index].w != width) {
             this._vitems[index].w = width;
             this.buildVirtualItems();
         }
@@ -710,7 +705,7 @@ export abstract class VirtualList extends Component {
      * @param height 高度
      */
     protected updateItemHeight(index: number, height: number) {
-        if (this._vitems[index] && this._vitems[index].h != height) {
+        if (this.singleLayout && this._vitems[index] && this._vitems[index].h != height) {
             this._vitems[index].h = height;
             this.buildVirtualItems();
         }

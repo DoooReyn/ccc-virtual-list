@@ -2,7 +2,9 @@ import { Rect, Vec3 } from "cc";
 import { ReusableObject } from "./ReusableObjectPool";
 import { VirtualList } from "./VirtualList";
 
-/** 虚拟列表子项 */
+/** 
+ * 虚拟列表子项
+ */
 export default class VirtualItem extends ReusableObject {
     /** 子项索引 */
     public i: number = 0;
@@ -15,12 +17,12 @@ export default class VirtualItem extends ReusableObject {
     /** 子项纵坐标 */
     public y: number = 0;
     /** 虚拟列表 */
-    public list: VirtualList = null;
+    public l: VirtualList = null;
     /** 矩形边界 */
-    private _rect: Rect = new Rect();
+    private _r: Rect = new Rect();
     /** 实际子项的位置 */
     public get position() {
-        if (this.list.horizontal) {
+        if (this.l.horizontal) {
             return new Vec3(this.x + this.w / 2, this.y, 0);
         } else {
             return new Vec3(this.x, this.y + this.h / 2, 0);
@@ -31,16 +33,16 @@ export default class VirtualItem extends ReusableObject {
      * @param bounds 容器边界
      */
     public checkBounds(bounds: Rect) {
-        this._rect.set(this.x + this.list.container.position.x, this.y + this.list.container.position.y, this.w, this.h);
-        const intersects = this._rect.intersects(bounds);
+        this._r.set(this.x + this.l.container.position.x, this.y + this.l.container.position.y, this.w, this.h);
+        const intersects = this._r.intersects(bounds);
         // @ts-ignore
-        intersects ? this.list.onItemShow(this) : this.list.onItemHide(this);
+        intersects ? this.l.onItemShow(this) : this.l.onItemHide(this);
         return intersects;
     }
     /** 重置 */
     protected reset() {
         this.i = this.w = this.h = this.x = this.y = 0;
-        this.list = null;
+        this.l = null;
     }
 
     protected onAcquire(): void {
