@@ -2,7 +2,7 @@ import { Rect, Vec3 } from "cc";
 import { ReusableObject } from "./ReusableObjectPool";
 import { VirtualList } from "./VirtualList";
 
-/** 
+/**
  * 虚拟列表子项
  */
 export default class VirtualItem extends ReusableObject {
@@ -29,15 +29,29 @@ export default class VirtualItem extends ReusableObject {
         }
     }
     /**
-     * 检查边界
+     * 检查子项边界
      * @param bounds 容器边界
      */
     public checkBounds(bounds: Rect) {
-        this._r.set(this.x + this.l.container.position.x, this.y + this.l.container.position.y, this.w, this.h);
-        const intersects = this._r.intersects(bounds);
-        // @ts-ignore
+        const { x, y } = this.l.container.position;
+        this._r.set(this.x + x, this.y + y, this.w, this.h);
+        return this._r.intersects(bounds);
+    }
+    /** 检查子项边界 */
+    public checkItemBounds() {
+        const intersects = this.checkBounds(this.l.viewBounds);
+        // const ritem = this.l.getItemAt(this.i);
+        // if (ritem) {
+        //     if (intersects && !ritem.active) {
+        //         this.l.onItemShow(this);
+        //     }
+        //     if (!intersects && ritem.active) {
+        //         this.l.onItemHide(this);
+        //     }
+        // } else {
+        //     intersects ? this.l.onItemShow(this) : this.l.onItemHide(this);
+        // }
         intersects ? this.l.onItemShow(this) : this.l.onItemHide(this);
-        return intersects;
     }
     /** 重置 */
     protected reset() {

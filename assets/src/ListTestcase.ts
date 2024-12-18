@@ -120,8 +120,10 @@ export class ListTestcase extends Component {
     private onAddItem() {
         const count = (Math.random() * 10 + 1) | 0;
         const list = this.isModeGH ? this.$ghlist : this.$gvlist;
-        for (let i = 0; i < count; i++) {
-            list.insertEnd(((Math.random() * 100) | 0).toString());
+        for (let i = 0, index: number, text: string; i < count; i++) {
+            const index = (Math.random() * list.count) | 0;
+            text = ((Math.random() * 100) | 0).toString();
+            list.insertAt(index, text);
         }
     }
 

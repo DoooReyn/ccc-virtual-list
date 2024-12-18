@@ -151,7 +151,7 @@ export abstract class VirtualList extends Component {
     }
 
     /** 视图边界 */
-    protected get viewBounds() {
+    public get viewBounds() {
         return this.node.getComponent(UITransform).getBoundingBox();
     }
 
@@ -171,12 +171,12 @@ export abstract class VirtualList extends Component {
     }
 
     /** 容器尺寸 */
-    public get contentSize() {
+    public get containerSize() {
         return this._containerTransform.contentSize;
     }
 
     /** 自动回弹时间 */
-    private get bouncableTime() {
+    protected get bouncableTime() {
         return this.$bouncable ? this.$bounceTime : 0;
     }
 
@@ -207,7 +207,7 @@ export abstract class VirtualList extends Component {
 
     /** 容器结束位置 */
     public get endPos() {
-        const size = this.contentSize;
+        const size = this.containerSize;
         if (this.horizontal) {
             return new Vec3(-size.width + this._minWidth / 2, this._startPos.y);
         } else {
@@ -232,9 +232,9 @@ export abstract class VirtualList extends Component {
     /** 容器是否在结束位置 */
     public get atEnd() {
         if (this.horizontal) {
-            return this._container.position.x <= -this.contentSize.width + this.minWidth / 2;
+            return this._container.position.x <= -this.containerSize.width + this.minWidth / 2;
         } else {
-            return this.container.position.y >= this.contentSize.height - this._minHeight / 2;
+            return this.container.position.y >= this.containerSize.height - this._minHeight / 2;
         }
     }
 
@@ -245,7 +245,12 @@ export abstract class VirtualList extends Component {
 
     /** 是否保持最小尺寸 */
     protected get isMinSize() {
-        return this.contentSize.width == this._minWidth && this.contentSize.height == this._minHeight;
+        return this.containerSize.width == this._minWidth && this.containerSize.height == this._minHeight;
+    }
+
+    /** 容器当前位置 */
+    public get containerPos() {
+        return this._container.position;
     }
 
     /**
@@ -343,7 +348,7 @@ export abstract class VirtualList extends Component {
      * 虚拟子项进入视野
      * @param vitem 虚拟子项
      */
-    protected onItemShow(vitem: VirtualItem) {
+    public onItemShow(vitem: VirtualItem) {
         const item = this.getItemAt(vitem.i, true);
         if (item) {
             item.setPosition(vitem.position);
@@ -357,7 +362,7 @@ export abstract class VirtualList extends Component {
      * 虚拟子项移出视野
      * @param vitem 虚拟子项
      */
-    protected onItemHide(vitem: VirtualItem) {
+    public onItemHide(vitem: VirtualItem) {
         const item = this.getItemAt(vitem.i, false);
         if (item) {
             this.recycleItem(item);
@@ -367,7 +372,7 @@ export abstract class VirtualList extends Component {
     /** 绘制容器边界 */
     private drawContainerBounds() {
         if (this.$debugDraw) {
-            const { width, height } = this._containerTransform.contentSize;
+            const { width, height } = this.containerSize;
             const pos = this.horizontal ? new Vec3(0, -height / 2) : new Vec3(-width / 2, -height);
             const containerG = this._container.getComponent(Graphics);
             containerG.clear();
@@ -595,23 +600,22 @@ export abstract class VirtualList extends Component {
     /** 构建网格布局 */
     private buildGridLayout() {
         if (this._dataSource && this._dataSource.length > 0) {
-            const hor = this.horizontal;
             let startX: number = 0;
             let startY: number = 0;
+            const hor = this.horizontal;
             const count = this._dataSource.length;
             const grids = this.grids;
             const rows = Math.ceil(count / grids);
             const is = this.getItemSize(0);
             const size = new Size(...is);
             const spacing = this.$spacing;
+            const vitems = this._vitems;
             if (hor) {
                 size.height = this._minHeight;
             } else {
                 size.width = this._minWidth;
             }
-            let item: VirtualItem;
-            let i = 0;
-            for (let r = 0; r < rows; r++) {
+            for (let r = 0, i = 0, item: VirtualItem; r < rows; r++) {
                 if (hor) {
                     startY = 0;
                 } else {
@@ -621,7 +625,7 @@ export abstract class VirtualList extends Component {
                 for (let c = 0; c < grids; c++) {
                     i = r * grids + c;
                     if (i >= count) return;
-                    item = this._vitems[i];
+                    item = vitems[i];
                     item.i = i;
                     if (hor) {
                         item.x = startX;
@@ -876,10 +880,9 @@ export abstract class VirtualList extends Component {
 
     /** 检查虚拟子项的边界 */
     private checkVirtualBounds() {
-        const bounds = this.viewBounds;
         for (let i = 0, item: VirtualItem; i < this._vitems.length; i++) {
             item = this._vitems[i];
-            item.checkBounds(bounds);
+            item.checkItemBounds();
         }
     }
 
@@ -932,11 +935,11 @@ export abstract class VirtualList extends Component {
             const pos = vitem.position;
             if (this.horizontal) {
                 pos.x = -pos.x - this._minWidth / 2 + this.$spacing / 2 + vitem.w / 2;
-                pos.x = Math.max(pos.x, -this.contentSize.width + this.minWidth / 2 + this.$spacing / 2);
+                pos.x = Math.max(pos.x, -this.containerSize.width + this.minWidth / 2 + this.$spacing / 2);
                 if (this.gridLayout) pos.y = this._startPos.y;
             } else {
                 pos.y = -pos.y - vitem.h / 2 - this.$spacing / 2 + this._minHeight / 2;
-                pos.y = Math.min(pos.y, this.contentSize.height - this._minHeight / 2 - this.$spacing / 2);
+                pos.y = Math.min(pos.y, this.containerSize.height - this._minHeight / 2 - this.$spacing / 2);
                 if (this.gridLayout) pos.x = this._startPos.x;
             }
             return pos;
