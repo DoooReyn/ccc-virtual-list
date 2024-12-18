@@ -682,7 +682,7 @@ export abstract class VirtualList extends Component {
      * @param width 宽度
      * @param height 高度
      */
-    protected updateItemSize(index: number, width: number, height: number) {
+    public updateItemSize(index: number, width: number, height: number) {
         if (this.singleLayout && this._vitems[index]) {
             if (this._vitems[index].w != width || this._vitems[index].h != height) {
                 this._vitems[index].w = width;
@@ -697,7 +697,7 @@ export abstract class VirtualList extends Component {
      * @param index 索引
      * @param width 宽度
      */
-    protected updateItemWidth(index: number, width: number) {
+    public updateItemWidth(index: number, width: number) {
         if (this.singleLayout && this._vitems[index] && this._vitems[index].w != width) {
             this._vitems[index].w = width;
             this.buildVirtualItems();
@@ -709,7 +709,7 @@ export abstract class VirtualList extends Component {
      * @param index 索引
      * @param height 高度
      */
-    protected updateItemHeight(index: number, height: number) {
+    public updateItemHeight(index: number, height: number) {
         if (this.singleLayout && this._vitems[index] && this._vitems[index].h != height) {
             this._vitems[index].h = height;
             this.buildVirtualItems();

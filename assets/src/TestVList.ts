@@ -1,3 +1,4 @@
+import ItemRenderer from "./ItemRenderer";
 import { ListTestItemPool } from "./ListTestItemPool";
 import { VirtualList } from "./VirtualList";
 import { _decorator, Label, Node, UITransform } from "cc";
@@ -145,6 +146,13 @@ const DEFAULT_DATA_SOURCE = {
     gvlist: POETRY2,
 } as const;
 
+/** 模板名称 */
+enum TemplateName {
+    H = "HItem",
+    V = "VItem",
+    G = "GItem",
+}
+
 /**
  * 虚拟列表测试
  */
@@ -161,56 +169,30 @@ export class TestVList extends VirtualList {
         super.onDestroy();
     }
 
-    /**
-     * 添加节点
-     * @param index 索引
-     * @returns
-     */
     protected appendItem(index: number) {
+        let item: Node;
         if (this.gridLayout) {
-            return ListTestItemPool.inst.acquire("GItem");
+            item = ListTestItemPool.inst.acquire(TemplateName.G);
         } else {
-            const item = ListTestItemPool.inst.acquire(this.horizontal ? "HItem" : "VItem");
-            item.on(Node.EventType.SIZE_CHANGED, this.onItemSizeChanged.bind(this, index), this);
-            return item;
+            item = ListTestItemPool.inst.acquire(this.horizontal ? TemplateName.H : TemplateName.V);
         }
+        item.addComponent(ItemRenderer).onAcquire(this, index);
+        return item;
     }
 
-    /**
-     * 渲染节点
-     * @param item 节点
-     * @param index 索引
-     */
     protected renderItem(item: Node, index: number) {
-        const text = this._dataSource[index];
-        item.getChildByName("Label").getComponent(Label).string = text;
-    }
-
-    /**
-     * 节点尺寸变化
-     * @param index 索引
-     */
-    protected onItemSizeChanged(index: number) {
-        const item = this.getItemAt(index);
-        if (item) {
-            const { width, height } = item.getComponent(UITransform);
-            if (this.horizontal) {
-                this.updateItemWidth(index, width);
-            } else {
-                this.updateItemHeight(index, height);
-            }
-        }
+        item.getComponent(ItemRenderer)!.onRendered(this._dataSource[index], index);
     }
 
     protected recycleItem(item: Node): void {
-        ListTestItemPool.inst.recycle(item);
-        item.targetOff(this);
-        item.getChildByName("Label").getComponent(Label).string = "";
-        item.getComponent(UITransform).setContentSize(...this.getItemSize(0));
+        const renderer = item.getComponent(ItemRenderer)!;
+        renderer.onRecycled();
+        renderer.destroy();
         item.active = false;
+        ListTestItemPool.inst.recycle(item);
     }
 
-    protected getItemSize(index: number): [number, number] {
+    public getItemSize(index: number): [number, number] {
         if (this.gridLayout) {
             return [100, 100];
         }

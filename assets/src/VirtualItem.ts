@@ -16,6 +16,8 @@ export default class VirtualItem extends ReusableObject {
     public x: number = 0;
     /** 子项纵坐标 */
     public y: number = 0;
+    /** @todo 是否折叠（折叠的子项不会被渲染） */
+    public c: boolean = false;
     /** 虚拟列表 */
     public l: VirtualList = null;
     /** 矩形边界 */
