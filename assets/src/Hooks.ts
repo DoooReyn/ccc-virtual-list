@@ -62,7 +62,7 @@ class Hook {
 }
 
 /**
- * 钩子管理器
+ * 钩子集合
  */
 export default class Hooks {
     /** 钩子列表 */
@@ -78,7 +78,7 @@ export default class Hooks {
      * @param thisArg 钩子方法的 this 指向
      * @param once 是否只执行一次
      */
-    public set(hook: Function, thisArg: any, once: boolean = false) {
+    public add(hook: Function, thisArg: any, once: boolean = false) {
         this._hooks.push(new Hook(hook, thisArg, once));
     }
 
@@ -87,7 +87,7 @@ export default class Hooks {
      * @param hook 钩子方法
      * @param thisArg 钩子方法的 this 指向
      */
-    public delete(hook: Function, thisArg: any) {
+    public remove(hook: Function, thisArg: any) {
         for (let i = this._hooks.length - 1; i >= 0; i--) {
             if (this._hooks[i].equals(hook, thisArg)) {
                 this._hooks.splice(i, 1);

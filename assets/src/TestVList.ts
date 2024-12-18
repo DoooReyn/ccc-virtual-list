@@ -1,5 +1,4 @@
-import { ListTestItemPool } from "./ListTestcase";
-import ReusableNodePool from "./ReusableNodePool";
+import { ListTestItemPool } from "./ListTestItemPool";
 import { VirtualList } from "./VirtualList";
 import { _decorator, Label, Node, UITransform } from "cc";
 const { ccclass } = _decorator;
@@ -153,8 +152,8 @@ const DEFAULT_DATA_SOURCE = {
 export class TestVList extends VirtualList {
     protected start(): void {
         const exportName = this.node.name.toLowerCase();
-        (<any>window)[exportName] = this;
         this.data = DEFAULT_DATA_SOURCE[exportName].slice();
+        (<any>window)[exportName] = this; // 测试用
     }
 
     protected onDestroy(): void {
@@ -162,6 +161,11 @@ export class TestVList extends VirtualList {
         super.onDestroy();
     }
 
+    /**
+     * 添加节点
+     * @param index 索引
+     * @returns
+     */
     protected appendItem(index: number) {
         if (this.gridLayout) {
             return ListTestItemPool.inst.acquire("GItem");
@@ -172,11 +176,20 @@ export class TestVList extends VirtualList {
         }
     }
 
+    /**
+     * 渲染节点
+     * @param item 节点
+     * @param index 索引
+     */
     protected renderItem(item: Node, index: number) {
         const text = this._dataSource[index];
         item.getChildByName("Label").getComponent(Label).string = text;
     }
 
+    /**
+     * 节点尺寸变化
+     * @param index 索引
+     */
     protected onItemSizeChanged(index: number) {
         const item = this.getItemAt(index);
         if (item) {

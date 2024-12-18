@@ -54,7 +54,7 @@ export default class ReusableNodePool {
      * @param thisArg 钩子 this 指向
      */
     public onItemAcquired(hook: Function, thisArg: any) {
-        this._acquireHooks.set(hook, thisArg);
+        this._acquireHooks.add(hook, thisArg);
     }
 
     /**
@@ -63,7 +63,7 @@ export default class ReusableNodePool {
      * @param thisArg 钩子 this 指向
      */
     public offItemAcquired(hook: Function, thisArg: any) {
-        this._acquireHooks.delete(hook, thisArg);
+        this._acquireHooks.remove(hook, thisArg);
     }
 
     /**
@@ -79,7 +79,7 @@ export default class ReusableNodePool {
      * @param thisArg 钩子 this 指向
      */
     public onItemRecycled(hook: Function, thisArg: any) {
-        this._recycleHooks.set(hook, thisArg);
+        this._recycleHooks.add(hook, thisArg);
     }
 
     /**
@@ -88,7 +88,7 @@ export default class ReusableNodePool {
      * @param thisArg 钩子 this 指向
      */
     public offItemRecycled(hook: Function, thisArg: any) {
-        this._recycleHooks.delete(hook, thisArg);
+        this._recycleHooks.remove(hook, thisArg);
     }
 
     /**

@@ -1,46 +1,17 @@
 import { _decorator, Component, Node, EditBox, misc, Button, Sprite, Color, resources, Prefab } from "cc";
 import { TestVList } from "./TestVList";
-import Hooks from "./Hooks";
-import ReusableNodePool from "./ReusableNodePool";
+import { ListTestItemPool } from "./ListTestItemPool";
+import BatchLoader from "./BatchLoader";
 const { ccclass, property } = _decorator;
 
-type Mode = "n" | "sh" | "sv" | "gh" | "gv";
+/** 案例选择 */
+type TestCaseMode = "n" | "sh" | "sv" | "gh" | "gv";
 
-const COLOR = {
+/** 背景颜色 */
+const BACKGROUND_COLOR = {
     ON: new Color(255, 255, 255),
     OFF: new Color(160, 160, 160),
 } as const;
-
-class QueueLoader {
-    private _hooks: Hooks;
-    constructor(private _count: number = 0) {
-        this._hooks = new Hooks();
-    }
-    dec() {
-        this._count--;
-        if (this._count <= 0) {
-            this._count = 0;
-            this._hooks.run();
-        }
-    }
-    onComplete(hook: Function, thisArg: any) {
-        this._hooks.clear();
-        this._hooks.set(hook, thisArg, true);
-    }
-    offComplete() {
-        this._hooks.clear();
-    }
-}
-
-export class ListTestItemPool extends ReusableNodePool {
-    private static _inst: ListTestItemPool;
-    static get inst() {
-        if (!this._inst) {
-            this._inst = new ListTestItemPool();
-        }
-        return this._inst;
-    }
-}
 
 /**
  * 虚拟列表测试示例
@@ -87,23 +58,39 @@ export class ListTestcase extends Component {
     @property(Node)
     $endbtn: Node = null;
 
-    private _mode: Mode = "n";
+    private _mode: TestCaseMode = "n";
+
+    /** 是否水平滚动单项布局案例 */
+    public get isModeSH() {
+        return this._mode == "sh";
+    }
+
+    /** 是否垂直滚动单项布局案例 */
+    public get isModeSV() {
+        return this._mode == "sv";
+    }
+
+    /** 是否水平滚动网格布局案例 */
+    public get isModeGH() {
+        return this._mode == "gh";
+    }
+
+    /** 是否垂直滚动网格布局案例 */
+    public get isModeGV() {
+        return this._mode == "gv";
+    }
 
     protected start(): void {
-        (<any>window).canvas = this;
-        const queueLoader = new QueueLoader(3);
-        queueLoader.onComplete(this.onLoadComplete, this);
+        const queueLoader = new BatchLoader(3);
+        queueLoader.add(this.onLoadComplete, this);
         const oncomplete = (err: Error, res: Prefab) => {
+            if (err) console.error(err);
             if (res) ListTestItemPool.inst.add(res);
             queueLoader.dec();
         };
         resources.load("HItem", Prefab, oncomplete);
         resources.load("VItem", Prefab, oncomplete);
         resources.load("GItem", Prefab, oncomplete);
-    }
-
-    private onLoadComplete() {
-        this.changeMode("sh");
     }
 
     protected onEnable(): void {
@@ -130,24 +117,19 @@ export class ListTestcase extends Component {
         this.$endbtn.off(Button.EventType.CLICK, this.onSrollToEnd, this);
     }
 
-    private get isModeSH() {
-        return this._mode == "sh";
+    /** 预制体加载完成 */
+    private onLoadComplete() {
+        this.changeMode("sh");
     }
 
-    private get isModeSV() {
-        return this._mode == "sv";
-    }
-
-    private get isModeGH() {
-        return this._mode == "gh";
-    }
-
-    private get isModeGV() {
-        return this._mode == "gv";
-    }
-
-    private changeMode(mode: Mode) {
+    /**
+     * 切换案例
+     * @param mode 案例
+     * @returns
+     */
+    private changeMode(mode: TestCaseMode) {
         if (this._mode == mode) return;
+
         this._mode = mode;
         this.$hlist.node.active = this.isModeSH;
         this.$vlist.node.active = this.isModeSV;
@@ -156,22 +138,25 @@ export class ListTestcase extends Component {
         this.$editbox.node.active = this.isModeSH || this.isModeSV;
         this.$gabtn.active = this.isModeGH || this.isModeGV;
         this.$grbtn.active = this.isModeGH || this.isModeGV;
-        this.$shbtn.getComponent(Sprite).color = this.isModeSH ? COLOR.ON : COLOR.OFF;
-        this.$svbtn.getComponent(Sprite).color = this.isModeSV ? COLOR.ON : COLOR.OFF;
-        this.$ghbtn.getComponent(Sprite).color = this.isModeGH ? COLOR.ON : COLOR.OFF;
-        this.$gvbtn.getComponent(Sprite).color = this.isModeGV ? COLOR.ON : COLOR.OFF;
+        this.$shbtn.getComponent(Sprite).color = this.isModeSH ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
+        this.$svbtn.getComponent(Sprite).color = this.isModeSV ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
+        this.$ghbtn.getComponent(Sprite).color = this.isModeGH ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
+        this.$gvbtn.getComponent(Sprite).color = this.isModeGV ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
     }
 
+    /** 随机插入几项 */
     private onAddItem() {
         const count = (Math.random() * 10 + 1) | 0;
         const list = this.isModeGH ? this.$ghlist : this.$gvlist;
-        for (let i = 0, index: number, text: string; i < count; i++) {
-            const index = (Math.random() * list.count) | 0;
-            text = ((Math.random() * 100) | 0).toString();
+        for (let i = 0, r: number, index: number, text: string; i < count; i++) {
+            r = Math.random();
+            index = (r * list.count) | 0;
+            text = ((r * 100) | 0).toString();
             list.insertAt(index, text);
         }
     }
 
+    /** 随机移除一项 */
     private onRemoveItem() {
         const list = this.isModeGH ? this.$ghlist : this.$gvlist;
         if (list.count > 0) {
@@ -180,22 +165,27 @@ export class ListTestcase extends Component {
         }
     }
 
+    /** 切换到水平滚动单项布局案例 */
     private onChangeModeSH() {
         this.changeMode("sh");
     }
 
+    /** 切换到垂直滚动单项布局案例 */
     private onChangeModeSV() {
         this.changeMode("sv");
     }
 
+    /** 切换到水平滚动网格布局案例 */
     private onChangeModeGH() {
         this.changeMode("gh");
     }
 
+    /** 切换到垂直滚动网格布局案例 */
     private onChangeModeGV() {
         this.changeMode("gv");
     }
 
+    /** 滚动到起始处 */
     private onScrollToStart() {
         if (this.isModeSH) {
             this.$hlist.scrollToStart(0.5);
@@ -208,6 +198,7 @@ export class ListTestcase extends Component {
         }
     }
 
+    /** 滚动到结束处 */
     private onSrollToEnd() {
         if (this.isModeSH) {
             this.$hlist.scrollToEnd(0.5);
@@ -220,14 +211,12 @@ export class ListTestcase extends Component {
         }
     }
 
+    /** 发送聊天消息文本 */
     private onSendMsg() {
         const text = this.$editbox.string;
         if (text.length > 0) {
-            if (this.isModeSH) {
-                this.$hlist.insertEnd(text);
-            } else if (this.isModeSV) {
-                this.$vlist.insertEnd(text);
-            }
+            const list = this.isModeSH ? this.$hlist : this.$vlist;
+            list.insertEnd(text);
         }
         this.$editbox.string = "";
         misc.callInNextTick(() => {

@@ -1081,14 +1081,14 @@ export abstract class VirtualList extends Component {
     protected abstract getItemSize(index: number): [number, number];
 
     /**
-     * 添加视图子项
+     * 添加子项
      * @param index 索引
      * @abstract
      */
     protected abstract appendItem(index: number): Node;
 
     /**
-     * 渲染视图子项
+     * 渲染子项
      * @param item 子项
      * @param index 索引
      * @abstract
@@ -1096,7 +1096,7 @@ export abstract class VirtualList extends Component {
     protected abstract renderItem(item: Node, index: number): void;
 
     /**
-     * 回收视图子项
+     * 回收子项
      * @param item 子项
      * @abstract
      */
