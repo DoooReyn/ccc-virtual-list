@@ -222,9 +222,9 @@
     "_far": 2000,
     "_color": {
       "__type__": "cc.Color",
-      "r": 46,
-      "g": 46,
-      "b": 46,
+      "r": 80,
+      "g": 80,
+      "b": 80,
       "a": 255
     },
     "_depth": 1,
@@ -1033,7 +1033,7 @@
       "b": 187,
       "a": 255
     },
-    "_string": "请输入聊天内容",
+    "_string": "请输入文本",
     "_horizontalAlign": 0,
     "_verticalAlign": 1,
     "_actualFontSize": 20.65343638509512,
@@ -1156,7 +1156,7 @@
     "_placeholderLabel": {
       "__id__": 26
     },
-    "_returnType": 0,
+    "_returnType": 2,
     "_string": "",
     "_tabIndex": 0,
     "_backgroundImage": {

@@ -5,9 +5,13 @@
 ### 列表形式
 
 -   水平滚动单项布局列表
+    ![](./screenshot/shlist.gif)
 -   垂直滚动单项布局列表
+    ![](./screenshot/svlist.gif)
 -   水平滚动网格布局列表
+    ![](./screenshot/ghlist.gif)
 -   垂直滚动网格布局列表
+    ![](./screenshot/gvlist.gif)
 
 ### 支持功能
 
