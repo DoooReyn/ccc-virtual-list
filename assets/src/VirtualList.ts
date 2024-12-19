@@ -18,9 +18,9 @@ import {
     Event,
     misc,
 } from "cc";
-import ReusableObjectPool from "./ReusableObjectPool";
 import VirtualItem from "./VirtualItem";
 import { VirtualItemPool } from "./VirtualItemPool";
+import ScrollBar from "./ScrollBar";
 const { ccclass, property } = _decorator;
 
 /** 虚拟子项的索引标识 */
@@ -102,6 +102,8 @@ export abstract class VirtualList extends Component {
     private _toIndex: number | null = null;
     /** 滚动方式 */
     private _scrollMode: LIST_SCROLL_MODE = LIST_SCROLL_MODE.STOP;
+    /** 滚动条 */
+    private _scrollBar: ScrollBar = null;
 
     @property({ displayName: "调试绘制", displayOrder: 0 })
     protected $debugDraw: boolean = false;
@@ -135,6 +137,14 @@ export abstract class VirtualList extends Component {
     protected $bounceTime = 0.1;
     @property({ displayName: "网格数量", type: CCInteger, group: { id: "5", name: "网格参数", displayOrder: 5 } })
     protected $grids: number = 1;
+    @property({ displayName: "显示滚动条", group: { id: "6", name: "滚动条", displayOrder: 6 } })
+    protected $useScrollBar: boolean = false;
+    @property({ displayName: "滑块颜色", group: { id: "6", name: "滚动条", displayOrder: 6 } })
+    protected $scrollBarColor: Color = new Color(0, 0, 0, 80);
+    @property({ displayName: "滑块扁度", type: CCInteger, min: 1, group: { id: "6", name: "滚动条", displayOrder: 6 } })
+    protected $scrollBarSpan: number = 3;
+    @property({ displayName: "滑块显示时间", group: { id: "6", name: "滚动条", displayOrder: 6 } })
+    protected $scrollBarTime: number = 0.5;
 
     /** 是否水平滚动 */
     public get horizontal() {
@@ -245,13 +255,28 @@ export abstract class VirtualList extends Component {
     }
 
     /** 是否保持最小尺寸 */
-    protected get isMinSize() {
+    public get isMinSize() {
         return this.containerSize.width == this._minWidth && this.containerSize.height == this._minHeight;
+    }
+
+    /** 可视区尺寸 */
+    public get viewSize() {
+        return new Size(this._minWidth, this._minHeight);
+    }
+
+    /** 外框尺寸 */
+    public get frameSize() {
+        return this.node.getComponent(UITransform).contentSize;
     }
 
     /** 容器当前位置 */
     public get containerPos() {
         return this._container.position;
+    }
+
+    /** 边距 */
+    public get padding() {
+        return { l: this.$paddingLeft, r: this.$paddingRight, t: this.$paddingTop, b: this.$paddingBottom };
     }
 
     /**
@@ -294,6 +319,15 @@ export abstract class VirtualList extends Component {
         this._container = containerN;
         containerN.setPosition(pos);
         this._startPos = pos.clone();
+
+        // 滚动条
+        if (this.$useScrollBar) {
+            this._scrollBar = this.addComponent(ScrollBar);
+            this._scrollBar.sliderColor = this.$scrollBarColor;
+            this._scrollBar.sliderSpan = this.$scrollBarSpan;
+            this._scrollBar.sliderDisplayTime = this.$scrollBarTime;
+            this._scrollBar.bind(this);
+        }
 
         // 调试绘制外框
         if (this.$debugDraw) {
@@ -933,7 +967,7 @@ export abstract class VirtualList extends Component {
     /**
      * 获取虚拟子项位置
      * @param index 索引
-     * @returns 
+     * @returns
      */
     private getVirtualPositionAt(index: number) {
         const vitem = this._vitems[index];

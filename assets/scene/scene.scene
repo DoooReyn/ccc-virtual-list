@@ -454,6 +454,16 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 1,
+    "$useScrollBar": true,
+    "$scrollBarColor": {
+      "__type__": "cc.Color",
+      "r": 214,
+      "g": 29,
+      "b": 118,
+      "a": 242
+    },
+    "$scrollBarSpan": 4,
+    "$scrollBarTime": 0.5,
     "_id": "efxCAlcfNNsLACdzlMi7Vt"
   },
   {
@@ -552,6 +562,16 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 1,
+    "$useScrollBar": true,
+    "$scrollBarColor": {
+      "__type__": "cc.Color",
+      "r": 214,
+      "g": 29,
+      "b": 118,
+      "a": 241
+    },
+    "$scrollBarSpan": 4,
+    "$scrollBarTime": 0.5,
     "_id": "b6xsXT329AlYQSUL0o7TWf"
   },
   {
@@ -650,6 +670,16 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 4,
+    "$useScrollBar": true,
+    "$scrollBarColor": {
+      "__type__": "cc.Color",
+      "r": 221,
+      "g": 0,
+      "b": 0,
+      "a": 235
+    },
+    "$scrollBarSpan": 4,
+    "$scrollBarTime": 0.5,
     "_id": "2ea1PK4RNNTII40JXcfdsc"
   },
   {
@@ -748,6 +778,16 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 9,
+    "$useScrollBar": true,
+    "$scrollBarColor": {
+      "__type__": "cc.Color",
+      "r": 221,
+      "g": 0,
+      "b": 0,
+      "a": 235
+    },
+    "$scrollBarSpan": 4,
+    "$scrollBarTime": 1,
     "_id": "8fbd7pHXFLopBzTt5VeKeN"
   },
   {
