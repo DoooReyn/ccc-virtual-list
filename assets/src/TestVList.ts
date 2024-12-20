@@ -1,7 +1,8 @@
-import ItemRenderer from "./ItemRenderer";
+import ItemRenderer, { TreeItemData } from "./ItemRenderer";
 import { ListTestItemPool } from "./ListTestItemPool";
+import VirtualItem from "./VirtualItem";
 import { VirtualList } from "./VirtualList";
-import { _decorator, Label, Node, UITransform } from "cc";
+import { _decorator, Node } from "cc";
 const { ccclass } = _decorator;
 
 /** 诗词歌赋1 */
@@ -138,12 +139,44 @@ const POETRY2 = [
     "。",
 ] as const;
 
+/** 树形数据 */
+const TREE_DATA: TreeItemData[] = [
+    [1, 0, "《永遇乐·京口北固亭怀古》\n辛弃疾〔宋〕"],
+    [2, 1, "第一段落"],
+    [0, 2, "千古江山"],
+    [0, 2, "英雄无觅"],
+    [0, 2, "孙仲谋处"],
+    [0, 2, "舞榭歌台"],
+    [0, 2, "风流总被"],
+    [0, 2, "雨打风吹去"],
+    [0, 2, "斜阳草树"],
+    [0, 2, "寻常巷陌"],
+    [0, 2, "人道寄奴曾住"],
+    [0, 2, "想当年"],
+    [0, 2, "金戈铁马"],
+    [0, 2, "气吞万里如虎"],
+    [3, 1, "第二段落"],
+    [0, 3, "元嘉草草"],
+    [0, 3, "封狼居胥"],
+    [0, 3, "赢得仓皇北顾"],
+    [0, 3, "四十三年"],
+    [0, 3, "望中犹记"],
+    [0, 3, "烽火扬州路"],
+    [0, 3, "可堪回首"],
+    [0, 3, "佛狸祠下"],
+    [0, 3, "一片神鸦社鼓"],
+    [0, 3, "凭谁问："],
+    [0, 3, "廉颇老矣"],
+    [0, 3, "尚能饭否？"],
+];
+
 /** 默认数据 */
 const DEFAULT_DATA_SOURCE = {
     shlist: POETRY1,
     svlist: POETRY1,
     ghlist: POETRY2,
     gvlist: POETRY2,
+    tvlist: TREE_DATA,
 } as const;
 
 /** 模板名称 */
@@ -167,6 +200,22 @@ export class TestVList extends VirtualList {
     protected onDestroy(): void {
         ListTestItemPool.inst.clear();
         super.onDestroy();
+    }
+
+    protected onVirtualItemBuilt() {
+        if (this.node.name.toLowerCase() == "tvlist") {
+            for (let i = 0, data: TreeItemData, vitem: VirtualItem; i < this._vitems.length; i++) {
+                data = this.getDataAt(i);
+                vitem = this.getVirtualItemAt(i);
+                if (data[0] > 0) {
+                    vitem.m = true;
+                    vitem.t = data[0];
+                } else {
+                    vitem.m = false;
+                    vitem.t = data[1];
+                }
+            }
+        }
     }
 
     protected appendItem(index: number) {

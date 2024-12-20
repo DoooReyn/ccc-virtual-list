@@ -259,6 +259,30 @@ export abstract class VirtualList extends Component {
         return this.containerSize.width == this._minWidth && this.containerSize.height == this._minHeight;
     }
 
+    /**
+     * 获取索引处的数据
+     * @param index 索引
+     * @returns
+     */
+    public getDataAt(index: number) {
+        if (this._dataSource && index >= 0 && index < this._dataSource.length) {
+            return this._dataSource[index];
+        }
+        return null;
+    }
+
+    /**
+     * 获取索引处的虚拟子项
+     * @param index 索引
+     * @returns
+     */
+    public getVirtualItemAt(index: number) {
+        if (this._vitems && index >= 0 && index < this._vitems.length) {
+            return this._vitems[index];
+        }
+        return null;
+    }
+
     /** 可视区尺寸 */
     public get viewSize() {
         return new Size(this._minWidth, this._minHeight);
@@ -591,7 +615,7 @@ export abstract class VirtualList extends Component {
         } else {
             this.buildGridLayout();
         }
-
+        this.onVirtualItemBuilt();
         const size = this.calculateSize();
         this._containerTransform.setContentSize(size);
         this.drawContainerBounds();
@@ -606,6 +630,12 @@ export abstract class VirtualList extends Component {
         }
     }
 
+    /**
+     * 虚拟子项构建完毕
+     * @override 子类可以通过复写此方法来处理虚拟子项构建完毕后的逻辑
+     */
+    protected onVirtualItemBuilt() {}
+
     /** 构建单项布局 */
     private buildSingleLayout() {
         const hor = this.horizontal;
@@ -616,18 +646,26 @@ export abstract class VirtualList extends Component {
             for (let i = 0; i < this._dataSource.length; i++) {
                 item = this._vitems[i];
                 item.i = i;
-                if (hor) {
-                    item.x = startX;
-                    item.y = 0;
-                    startX += item.w + this.$spacing;
+                if (item.c && !item.m) {
+                    if (hor) {
+                        item.x = startX;
+                        item.y = 0;
+                    } else {
+                        item.x = 0;
+                        item.y = startY;
+                    }
                 } else {
-                    startY -= item.h;
-                    item.x = 0;
-                    item.y = startY;
-                    startY -= this.$spacing;
+                    if (hor) {
+                        item.x = startX;
+                        item.y = 0;
+                        startX += item.w + this.$spacing;
+                    } else {
+                        startY -= item.h;
+                        item.x = 0;
+                        item.y = startY;
+                        startY -= this.$spacing;
+                    }
                 }
-                item.w = item.w;
-                item.h = item.h;
             }
         }
     }
@@ -669,8 +707,6 @@ export abstract class VirtualList extends Component {
                         item.x = startX - size.width / 2 + is[0] / 2 + ((size.width - is[0]) / (grids - 1)) * c;
                         item.y = startY;
                     }
-                    item.w = item.w;
-                    item.h = item.h;
                 }
                 if (hor) {
                     startX += is[0];
@@ -680,6 +716,28 @@ export abstract class VirtualList extends Component {
                 }
             }
         }
+    }
+
+    /**
+     * 切换虚拟子项的折叠状态
+     * @param vitem 虚拟子项
+     * @returns
+     */
+    public collapse(vitem: VirtualItem) {
+        if (!vitem) return;
+        if (vitem.m) {
+            vitem.c = !vitem.c;
+            const t = vitem.t;
+            const c = vitem.c;
+            for (let i = vitem.i + 1; i < this._vitems.length; i++) {
+                if (this._vitems[i].t == t) {
+                    this._vitems[i].c = c;
+                } else break;
+            }
+        } else {
+            vitem.c = !vitem.c;
+        }
+        this.refreshView();
     }
 
     /** 清空数据源 */
@@ -866,23 +924,31 @@ export abstract class VirtualList extends Component {
     private calculateSingleSize() {
         let width = 0,
             height = 0,
-            size: [number, number];
+            size: [number, number],
+            uncollapses = 0;
         const hor = this.horizontal;
         const spacing = this.$spacing;
         const count = this.count;
         for (let i = 0; i < count; i++) {
             size = this.preGetItemSize(i);
             if (hor) {
-                width += size[0];
+                if (this._vitems[i].m || (!this._vitems[i].m && !this._vitems[i].c)) {
+                    width += size[0];
+                    uncollapses++;
+                }
             } else {
-                height += size[1];
+                if (this._vitems[i].m || (!this._vitems[i].m && !this._vitems[i].c)) {
+                    height += size[1];
+                    uncollapses++;
+                }
             }
         }
         if (count > 0) {
+            const extraSpacing = Math.max(0, uncollapses - 1) * spacing;
             if (hor) {
-                width += (count - 1) * spacing;
+                width += extraSpacing;
             } else {
-                height += (count - 1) * spacing;
+                height += extraSpacing;
             }
         }
         width = Math.max(width, this._minWidth);

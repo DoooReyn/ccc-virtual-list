@@ -5,7 +5,7 @@ import BatchLoader from "./BatchLoader";
 const { ccclass, property } = _decorator;
 
 /** 案例选择 */
-type TestCaseMode = "n" | "sh" | "sv" | "gh" | "gv";
+type TestCaseMode = "n" | "sh" | "sv" | "gh" | "gv" | "tv";
 
 /** 背景颜色 */
 const BACKGROUND_COLOR = {
@@ -31,6 +31,9 @@ export class ListTestcase extends Component {
     @property(TestVList)
     $gvlist: TestVList = null;
 
+    @property(TestVList)
+    $tvlist: TestVList = null;
+
     @property(EditBox)
     $editbox: EditBox = null;
 
@@ -45,6 +48,9 @@ export class ListTestcase extends Component {
 
     @property(Node)
     $gvbtn: Node = null;
+
+    @property(Node)
+    $tvbtn: Node = null;
 
     @property(Node)
     $gabtn: Node = null;
@@ -80,6 +86,11 @@ export class ListTestcase extends Component {
         return this._mode == "gv";
     }
 
+    /** 是否垂直树形布局案例 */
+    public get isModeTV() {
+        return this._mode == "tv";
+    }
+
     protected start(): void {
         const queueLoader = new BatchLoader(3);
         queueLoader.add(this.onLoadComplete, this);
@@ -99,6 +110,7 @@ export class ListTestcase extends Component {
         this.$svbtn.on(Button.EventType.CLICK, this.onChangeModeSV, this);
         this.$ghbtn.on(Button.EventType.CLICK, this.onChangeModeGH, this);
         this.$gvbtn.on(Button.EventType.CLICK, this.onChangeModeGV, this);
+        this.$tvbtn.on(Button.EventType.CLICK, this.onChangeModeTV, this);
         this.$gabtn.on(Button.EventType.CLICK, this.onAddItem, this);
         this.$grbtn.on(Button.EventType.CLICK, this.onRemoveItem, this);
         this.$startbtn.on(Button.EventType.CLICK, this.onScrollToStart, this);
@@ -111,6 +123,7 @@ export class ListTestcase extends Component {
         this.$svbtn.off(Button.EventType.CLICK, this.onChangeModeSV, this);
         this.$ghbtn.off(Button.EventType.CLICK, this.onChangeModeGH, this);
         this.$gvbtn.off(Button.EventType.CLICK, this.onChangeModeGV, this);
+        this.$tvbtn.off(Button.EventType.CLICK, this.onChangeModeTV, this);
         this.$gabtn.off(Button.EventType.CLICK, this.onAddItem, this);
         this.$grbtn.off(Button.EventType.CLICK, this.onRemoveItem, this);
         this.$startbtn.off(Button.EventType.CLICK, this.onScrollToStart, this);
@@ -135,6 +148,7 @@ export class ListTestcase extends Component {
         this.$vlist.node.active = this.isModeSV;
         this.$ghlist.node.active = this.isModeGH;
         this.$gvlist.node.active = this.isModeGV;
+        this.$tvlist.node.active = this.isModeTV;
         this.$editbox.node.active = this.isModeSH || this.isModeSV;
         this.$gabtn.active = this.isModeGH || this.isModeGV;
         this.$grbtn.active = this.isModeGH || this.isModeGV;
@@ -142,6 +156,7 @@ export class ListTestcase extends Component {
         this.$svbtn.getComponent(Sprite).color = this.isModeSV ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
         this.$ghbtn.getComponent(Sprite).color = this.isModeGH ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
         this.$gvbtn.getComponent(Sprite).color = this.isModeGV ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
+        this.$tvbtn.getComponent(Sprite).color = this.isModeTV ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
     }
 
     /** 随机插入几项 */
@@ -160,8 +175,7 @@ export class ListTestcase extends Component {
     private onRemoveItem() {
         const list = this.isModeGH ? this.$ghlist : this.$gvlist;
         if (list.count > 0) {
-            const index = (Math.random() * list.count) | 0;
-            list.removeAt(index);
+            list.removeAt((Math.random() * list.count) | 0);
         }
     }
 
@@ -185,30 +199,35 @@ export class ListTestcase extends Component {
         this.changeMode("gv");
     }
 
+    /** 切换到垂直树形案例 */
+    private onChangeModeTV() {
+        this.changeMode("tv");
+    }
+
+    private getListByMode() {
+        let list: TestVList;
+        if (this.isModeSH) {
+            list = this.$hlist;
+        } else if (this.isModeSV) {
+            list = this.$vlist;
+        } else if (this.isModeGH) {
+            list = this.$ghlist;
+        } else if (this.isModeGV) {
+            list = this.$gvlist;
+        } else if (this.isModeTV) {
+            list = this.$tvlist;
+        }
+        return list;
+    }
+
     /** 滚动到起始处 */
     private onScrollToStart() {
-        if (this.isModeSH) {
-            this.$hlist.scrollToStart(0.5);
-        } else if (this.isModeSV) {
-            this.$vlist.scrollToStart(0.5);
-        } else if (this.isModeGH) {
-            this.$ghlist.scrollToStart(0.5);
-        } else if (this.isModeGV) {
-            this.$gvlist.scrollToStart(0.5);
-        }
+        this.getListByMode().scrollToStart(0.5);
     }
 
     /** 滚动到结束处 */
     private onSrollToEnd() {
-        if (this.isModeSH) {
-            this.$hlist.scrollToEnd(0.5);
-        } else if (this.isModeSV) {
-            this.$vlist.scrollToEnd(0.5);
-        } else if (this.isModeGH) {
-            this.$ghlist.scrollToEnd(0.5);
-        } else if (this.isModeGV) {
-            this.$gvlist.scrollToEnd(0.5);
-        }
+        this.getListByMode().scrollToEnd(0.5);
     }
 
     /** 发送聊天消息文本 */

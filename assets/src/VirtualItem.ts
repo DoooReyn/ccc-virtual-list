@@ -16,7 +16,11 @@ export default class VirtualItem extends ReusableObject {
     public x: number = 0;
     /** 子项纵坐标 */
     public y: number = 0;
-    /** @todo 是否折叠（折叠的子项不会被渲染） */
+    /** 是否树的根节点 */
+    public m: boolean = false;
+    /** 所属树 */
+    public t: number = 0;
+    /** 是否折叠（折叠的子项不会被渲染） */
     public c: boolean = false;
     /** 虚拟列表 */
     public l: VirtualList = null;
@@ -37,6 +41,7 @@ export default class VirtualItem extends ReusableObject {
      * @param bounds 容器边界
      */
     public checkBounds(bounds: Rect) {
+        if (this.c && !this.m) return false;
         const { x, y } = this.l.container.position;
         this._r.set(this.x + x, this.y + y, this.w, this.h);
         return this._r.intersects(bounds);
@@ -50,6 +55,9 @@ export default class VirtualItem extends ReusableObject {
     /** 重置 */
     protected reset() {
         this.i = this.w = this.h = this.x = this.y = 0;
+        this.c = false;
+        this.m = false;
+        this.t = 0;
         this.l = null;
     }
 
