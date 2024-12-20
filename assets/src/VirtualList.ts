@@ -724,6 +724,7 @@ export abstract class VirtualList extends Component {
      * @returns
      */
     public collapse(vitem: VirtualItem) {
+        if (!this.singleLayout) return;
         if (!vitem) return;
         if (vitem.m) {
             vitem.c = !vitem.c;
