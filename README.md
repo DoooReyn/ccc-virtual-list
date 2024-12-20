@@ -12,6 +12,8 @@
     ![](./screenshot/ghlist.gif)
 -   垂直滚动网格布局列表
     ![](./screenshot/gvlist.gif)
+-   **2024.12.20** 新增树形列表支持
+    ![](./screenshot/tvlist.gif)
 
 ### 支持功能
 
