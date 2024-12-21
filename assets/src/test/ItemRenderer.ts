@@ -67,7 +67,7 @@ export default class ItemRenderer extends Component {
      */
     private onItemTouched(e: EventTouch) {
         if (e.type == Node.EventType.TOUCH_END && e.getLocation().equals(e.getStartLocation())) {
-            console.log(`onItemTouched:`, this._index, this._data);
+            // console.log(`onItemTouched:`, this._index, this._data);
             const vitem = this._list.getVirtualItemAt(this._index);
             this._list.collapse(vitem);
         }

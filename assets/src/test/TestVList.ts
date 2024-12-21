@@ -1,7 +1,7 @@
 import ItemRenderer, { TreeItemData } from "./ItemRenderer";
 import { ListTestItemPool } from "./ListTestItemPool";
-import VirtualItem from "./VirtualItem";
-import { VirtualList } from "./VirtualList";
+import VirtualItem from "../VirtualItem";
+import { VirtualList } from "../VirtualList";
 import { _decorator, Node } from "cc";
 const { ccclass } = _decorator;
 
@@ -248,7 +248,7 @@ export class TestVList extends VirtualList {
         if (this.horizontal) {
             return [120, 472];
         } else {
-            return [640, 52];
+            return [1000, 52];
         }
     }
 }

@@ -1,4 +1,4 @@
-import ReusableNodePool from "./ReusableNodePool";
+import ReusableNodePool from "../ReusableNodePool";
 
 /**
  * 虚拟列表测试·节点对象池

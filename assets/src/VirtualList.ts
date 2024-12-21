@@ -17,6 +17,7 @@ import {
     EventMouse,
     Event,
     misc,
+    Rect,
 } from "cc";
 import VirtualItem from "./VirtualItem";
 import { VirtualItemPool } from "./VirtualItemPool";
@@ -163,7 +164,8 @@ export abstract class VirtualList extends Component {
 
     /** 视图边界 */
     public get viewBounds() {
-        return this.node.getComponent(UITransform).getBoundingBox();
+        // return this.node.getComponent(UITransform).getBoundingBox();
+        return new Rect(-this._minWidth / 2, -this._minHeight / 2, this._minWidth, this._minHeight);
     }
 
     /** 是否单项布局 */
@@ -360,22 +362,22 @@ export abstract class VirtualList extends Component {
     }
 
     protected onEnable(): void {
-        this.view.on(Node.EventType.TOUCH_START, this.onTouchDrop, this, true);
-        this.view.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this, true);
-        this.view.on(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this, true);
-        this.view.on(Node.EventType.TOUCH_END, this.onTouchLeave, this, true);
-        this.view.on(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this, true);
+        this.view.on(Node.EventType.TOUCH_START, this.onTouchDrop, this);
+        this.view.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
+        this.view.on(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this);
+        this.view.on(Node.EventType.TOUCH_END, this.onTouchLeave, this);
+        this.view.on(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this);
         this.schedule(this.checkEndSticky, 0.1);
     }
 
     protected onDisable(): void {
         this.stopScroll();
         this.unschedule(this.checkEndSticky);
-        this.view.off(Node.EventType.TOUCH_START, this.onTouchDrop, this, true);
-        this.view.off(Node.EventType.TOUCH_MOVE, this.onTouchMove, this, true);
-        this.view.off(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this, true);
-        this.view.off(Node.EventType.TOUCH_END, this.onTouchLeave, this, true);
-        this.view.off(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this, true);
+        this.view.off(Node.EventType.TOUCH_START, this.onTouchDrop, this);
+        this.view.off(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
+        this.view.off(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this);
+        this.view.off(Node.EventType.TOUCH_END, this.onTouchLeave, this);
+        this.view.off(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this);
     }
 
     protected lateUpdate(dt: number): void {
@@ -423,9 +425,7 @@ export abstract class VirtualList extends Component {
      */
     public onItemHide(vitem: VirtualItem) {
         const item = this.getItemAt(vitem.i, false);
-        if (item) {
-            this.recycleItem(item);
-        }
+        if (item) this.recycleItem(item);
     }
 
     /** 绘制容器边界 */
@@ -472,7 +472,6 @@ export abstract class VirtualList extends Component {
         this._dropPos.y = e.getLocationY();
         this._lastPos.x = this._container.position.x;
         this._lastPos.y = this._container.position.y;
-        this.stopPropagationIfTargetIsMe(e);
     }
 
     /**
@@ -513,7 +512,6 @@ export abstract class VirtualList extends Component {
             this._scrollDirty = true;
             this.updateBounds();
         }
-        this.stopPropagationIfTargetIsMe(e);
     }
 
     /**
@@ -535,7 +533,6 @@ export abstract class VirtualList extends Component {
             this._scrollOffset.x = this._leavePos.x - this._dropPos.x;
             this._scrollOffset.y = this._leavePos.y - this._dropPos.y;
         }
-        this.stopPropagationIfTargetIsMe(e);
     }
 
     /** 检查回弹 */
@@ -1103,30 +1100,7 @@ export abstract class VirtualList extends Component {
             self.updateBounds();
             self.schedule(self.checkScrollMode);
         };
-        const tw = tween(this._container)
-            .to(
-                delta,
-                { position }
-                // {
-                //     onUpdate() {
-                //         if (time - Date.now() < 0) {
-                //             const index = self._toIndex;
-                //             tw.stop();
-                //             end();
-                //             self.scrollTo(position, 0);
-                //             return;
-                //         }
-                //         // 因为虚拟子项的尺寸可能发生变化，所以设置的位置可能不是最终的位置；
-                //         // 因此在这里对动作进行了 Hack，使得滚动过程中可以更新最终的位置。
-                //         if (self._toIndex != null) {
-                //             vitem = self._vitems[self._toIndex];
-                //             if (vitem) (<Vec3>(<any>tw)._actions[0]._originProps.position).set(vitem.position);
-                //         }
-                //     },
-                // }
-            )
-            .call(end)
-            .start();
+        tween(this._container).to(delta, { position }).call(end).start();
     }
 
     /**

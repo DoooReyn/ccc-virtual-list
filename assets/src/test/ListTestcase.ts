@@ -1,7 +1,7 @@
 import { _decorator, Component, Node, EditBox, misc, Button, Sprite, Color, resources, Prefab } from "cc";
 import { TestVList } from "./TestVList";
 import { ListTestItemPool } from "./ListTestItemPool";
-import BatchLoader from "./BatchLoader";
+import BatchLoader from "../BatchLoader";
 const { ccclass, property } = _decorator;
 
 /** 案例选择 */

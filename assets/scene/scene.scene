@@ -435,7 +435,7 @@
     "_id": "c1mbZnPUBB1qX+XV2Co+GT"
   },
   {
-    "__type__": "1a992IhpdxDvJ3DeZwv4mMw",
+    "__type__": "3b1e9LZ9iBO8q6GxR4Rn+pm",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -447,12 +447,12 @@
     "$debugDraw": false,
     "$direction": 0,
     "$layout": 0,
-    "$spacing": 4,
+    "$spacing": 10,
     "$stickAtEnd": false,
     "$paddingLeft": 4,
     "$paddingRight": 4,
-    "$paddingTop": 0,
-    "$paddingBottom": 0,
+    "$paddingTop": 4,
+    "$paddingBottom": 4,
     "$inertia": true,
     "$speed": 1,
     "$scrollDelta": 300,
@@ -463,14 +463,14 @@
     "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 214,
-      "g": 29,
-      "b": 118,
-      "a": 242
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 80
     },
-    "$scrollBarSpan": 4,
+    "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
-    "_id": "efxCAlcfNNsLACdzlMi7Vt"
+    "_id": "93ca/acwlPI65rSNYJCsQ+"
   },
   {
     "__type__": "cc.Node",
@@ -543,7 +543,7 @@
     "_id": "feG1EzE7pMTJztSpNsJlJj"
   },
   {
-    "__type__": "1a992IhpdxDvJ3DeZwv4mMw",
+    "__type__": "3b1e9LZ9iBO8q6GxR4Rn+pm",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -555,10 +555,10 @@
     "$debugDraw": false,
     "$direction": 1,
     "$layout": 0,
-    "$spacing": 4,
+    "$spacing": 10,
     "$stickAtEnd": true,
-    "$paddingLeft": 0,
-    "$paddingRight": 0,
+    "$paddingLeft": 4,
+    "$paddingRight": 4,
     "$paddingTop": 4,
     "$paddingBottom": 4,
     "$inertia": true,
@@ -571,14 +571,14 @@
     "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 214,
-      "g": 29,
-      "b": 118,
-      "a": 241
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 80
     },
-    "$scrollBarSpan": 4,
+    "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
-    "_id": "b6xsXT329AlYQSUL0o7TWf"
+    "_id": "27PLCc745D/7F81KJP4ZDO"
   },
   {
     "__type__": "cc.Node",
@@ -651,7 +651,7 @@
     "_id": "9eQFzy2ZZG17v+tZzGrb5z"
   },
   {
-    "__type__": "1a992IhpdxDvJ3DeZwv4mMw",
+    "__type__": "3b1e9LZ9iBO8q6GxR4Rn+pm",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -676,17 +676,17 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 4,
-    "$useScrollBar": true,
+    "$useScrollBar": false,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 221,
+      "r": 0,
       "g": 0,
       "b": 0,
-      "a": 235
+      "a": 80
     },
-    "$scrollBarSpan": 4,
+    "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
-    "_id": "2ea1PK4RNNTII40JXcfdsc"
+    "_id": "03esuiMgFK/qVJUZO/5cbv"
   },
   {
     "__type__": "cc.Node",
@@ -759,7 +759,7 @@
     "_id": "46HWrKcylF8YipNI8iKfjF"
   },
   {
-    "__type__": "1a992IhpdxDvJ3DeZwv4mMw",
+    "__type__": "3b1e9LZ9iBO8q6GxR4Rn+pm",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -772,7 +772,7 @@
     "$direction": 1,
     "$layout": 1,
     "$spacing": 10,
-    "$stickAtEnd": false,
+    "$stickAtEnd": true,
     "$paddingLeft": 4,
     "$paddingRight": 4,
     "$paddingTop": 4,
@@ -784,17 +784,17 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 9,
-    "$useScrollBar": true,
+    "$useScrollBar": false,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 221,
+      "r": 0,
       "g": 0,
       "b": 0,
-      "a": 235
+      "a": 80
     },
-    "$scrollBarSpan": 4,
-    "$scrollBarTime": 1,
-    "_id": "8fbd7pHXFLopBzTt5VeKeN"
+    "$scrollBarSpan": 3,
+    "$scrollBarTime": 0.5,
+    "_id": "bfWWCyJYNOAZToMbUgllSd"
   },
   {
     "__type__": "cc.Node",
@@ -867,7 +867,7 @@
     "_id": "21861pwkFIJ6uYe2jsU+by"
   },
   {
-    "__type__": "1a992IhpdxDvJ3DeZwv4mMw",
+    "__type__": "3b1e9LZ9iBO8q6GxR4Rn+pm",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -879,7 +879,7 @@
     "$debugDraw": false,
     "$direction": 1,
     "$layout": 0,
-    "$spacing": 5,
+    "$spacing": 10,
     "$stickAtEnd": false,
     "$paddingLeft": 4,
     "$paddingRight": 4,
@@ -892,17 +892,17 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 1,
-    "$useScrollBar": true,
+    "$useScrollBar": false,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 221,
+      "r": 0,
       "g": 0,
       "b": 0,
-      "a": 235
+      "a": 80
     },
-    "$scrollBarSpan": 4,
-    "$scrollBarTime": 1,
-    "_id": "30yaSL7yZD7JaDhzpS8OBu"
+    "$scrollBarSpan": 3,
+    "$scrollBarTime": 0.5,
+    "_id": "7dBnW9kjhBF4PtUKgrxsJ4"
   },
   {
     "__type__": "cc.Node",
@@ -4229,7 +4229,7 @@
     "_id": "c5V1EV8IpMtrIvY1OE9t2u"
   },
   {
-    "__type__": "a95c2+GIdlPcJ+izBZY4Kak",
+    "__type__": "b8d75iOHvNGvrkfgRzUiiNo",
     "_name": "",
     "_objFlags": 0,
     "__editorExtras__": {},
@@ -4283,7 +4283,7 @@
     "$endbtn": {
       "__id__": 90
     },
-    "_id": "caBgkYM6NP/paJUuMexvXC"
+    "_id": "d3wapJQt9O1IqDEGiEOJ82"
   },
   {
     "__type__": "cc.PrefabInfo",
