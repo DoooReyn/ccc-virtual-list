@@ -153,7 +153,7 @@
     "__prefab": {
       "__id__": 6
     },
-    "$debugDraw": true,
+    "$debugDraw": false,
     "$direction": 0,
     "$layout": 0,
     "$spacing": 10,

@@ -14,6 +14,8 @@
     ![](./screenshot/gvlist.gif)
 -   **2024.12.20** 新增树形列表支持
     ![](./screenshot/tvlist.gif)
+-   **2024.12.22** 新增嵌套列表支持
+    ![](./screenshot/nvlist.gif)
 
 ### 支持功能
 
