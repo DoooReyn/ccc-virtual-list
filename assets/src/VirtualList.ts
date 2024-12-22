@@ -116,6 +116,13 @@ export abstract class VirtualList extends Component {
     protected $spacing = 0;
     @property({ displayName: "自动滚到底部", group: { id: "1", name: "基础参数", displayOrder: 1 } })
     protected $stickAtEnd: boolean = false;
+    @property({
+        type: Node,
+        displayName: "空白提示",
+        tooltip: "列表无数据时的提示（可不填）",
+        group: { id: "1", name: "基础参数", displayOrder: 1 },
+    })
+    protected $tipEmpty: Node = null;
     @property({ displayName: "左", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
     protected $paddingLeft = 0;
     @property({ displayName: "右", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
@@ -312,6 +319,7 @@ export abstract class VirtualList extends Component {
     public set data(data: any[]) {
         this._dataSource = data;
         this._stickEndDirty = true;
+        this.checkEmptyTip();
         this.refreshView();
         this.checkEndSticky();
     }
@@ -368,6 +376,7 @@ export abstract class VirtualList extends Component {
         this.view.on(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this);
         this.view.on(Node.EventType.TOUCH_END, this.onTouchLeave, this);
         this.view.on(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this);
+        this.checkEmptyTip();
     }
 
     protected onDisable(): void {
@@ -401,6 +410,13 @@ export abstract class VirtualList extends Component {
         if (this._animating || this._scrollDirty) {
             if (this._scrollDirty) this._scrollDirty = false;
             this.checkVirtualBounds();
+        }
+    }
+
+    /** 检查列表空白提示 */
+    protected checkEmptyTip() {
+        if (this.$tipEmpty) {
+            this.$tipEmpty.active = this._dataSource && this._dataSource.length == 0;
         }
     }
 
