@@ -79,6 +79,7 @@ export default class ItemRenderer extends Component {
         this.node.off(Node.EventType.TOUCH_START, this.onItemTouched, this);
         this.node.off(Node.EventType.TOUCH_END, this.onItemTouched, this);
         this.transformer.setContentSize(...this._list.getItemSize(0));
+        this.label.isBold = false;
         this.label.string = "";
         this._list = null;
         this._index = -1;

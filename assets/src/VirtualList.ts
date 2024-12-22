@@ -313,6 +313,7 @@ export abstract class VirtualList extends Component {
         this._dataSource = data;
         this._stickEndDirty = true;
         this.refreshView();
+        this.checkEndSticky();
     }
 
     protected onLoad(): void {
@@ -367,12 +368,10 @@ export abstract class VirtualList extends Component {
         this.view.on(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this);
         this.view.on(Node.EventType.TOUCH_END, this.onTouchLeave, this);
         this.view.on(Node.EventType.TOUCH_CANCEL, this.onTouchLeave, this);
-        this.schedule(this.checkEndSticky, 0.1);
     }
 
     protected onDisable(): void {
         this.stopScroll();
-        this.unschedule(this.checkEndSticky);
         this.view.off(Node.EventType.TOUCH_START, this.onTouchDrop, this);
         this.view.off(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
         this.view.off(Node.EventType.MOUSE_WHEEL, this.onMouseWheel, this);
@@ -618,13 +617,10 @@ export abstract class VirtualList extends Component {
         this.drawContainerBounds();
         if (this.atStart) {
             this._container.setPosition(this.startPos);
-            misc.callInNextTick(() => this.scrollToStart());
         } else if (this.atEnd) {
             this._container.setPosition(this.endPos);
-            misc.callInNextTick(() => this.scrollToEnd());
-        } else {
-            this.checkVirtualBounds();
         }
+        this.checkVirtualBounds();
     }
 
     /**

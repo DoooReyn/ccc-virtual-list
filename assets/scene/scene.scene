@@ -463,10 +463,10 @@
     "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
-      "a": 80
+      "r": 240,
+      "g": 38,
+      "b": 111,
+      "a": 217
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
@@ -571,10 +571,10 @@
     "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
-      "a": 80
+      "r": 240,
+      "g": 38,
+      "b": 111,
+      "a": 217
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
@@ -676,13 +676,13 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 4,
-    "$useScrollBar": false,
+    "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
-      "a": 80
+      "r": 240,
+      "g": 38,
+      "b": 111,
+      "a": 217
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
@@ -784,13 +784,13 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 9,
-    "$useScrollBar": false,
+    "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
-      "a": 80
+      "r": 240,
+      "g": 38,
+      "b": 111,
+      "a": 217
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
@@ -892,13 +892,13 @@
     "$bouncable": true,
     "$bounceTime": 0.1,
     "$grids": 1,
-    "$useScrollBar": false,
+    "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 0,
-      "g": 0,
-      "b": 0,
-      "a": 80
+      "r": 240,
+      "g": 38,
+      "b": 111,
+      "a": 216
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
