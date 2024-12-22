@@ -106,52 +106,126 @@ export abstract class VirtualList extends Component {
     /** 滚动条 */
     private _scrollBar: ScrollBar = null;
 
-    @property({ displayName: "调试绘制", displayOrder: 0 })
+    @property({ displayName: "调试绘制", tooltip: "绘制视图调试框，方便开发阶段发现问题", displayOrder: 0 })
     protected $debugDraw: boolean = false;
-    @property({ displayName: "滚动方向", type: LIST_DIRCTION, group: { id: "1", name: "基础参数", displayOrder: 1 } })
+    @property({
+        displayName: "滚动方向",
+        tooltip: "分为水平滚动和垂直滚动",
+        type: LIST_DIRCTION,
+        group: { id: "1", name: "基础参数", displayOrder: 1 },
+    })
     protected $direction = LIST_DIRCTION.VERTICAL;
-    @property({ displayName: "布局方式", type: LIST_LAYOUT, group: { id: "1", name: "基础参数", displayOrder: 1 } })
+    @property({
+        displayName: "布局方式",
+        tooltip: "分为单项布局和网格布局\n单项即一行或一列只有一个子项\n网格即一行或一列有多个子项",
+        type: LIST_LAYOUT,
+        group: { id: "1", name: "基础参数", displayOrder: 1 },
+    })
     protected $layout = LIST_LAYOUT.SINGLE;
-    @property({ displayName: "子项间距", type: CCInteger, group: { id: "1", name: "基础参数", displayOrder: 1 } })
+    @property({
+        displayName: "子项间距",
+        tooltip: "每个子项之间的间隔",
+        type: CCInteger,
+        group: { id: "1", name: "基础参数", displayOrder: 1 },
+    })
     protected $spacing = 0;
-    @property({ displayName: "自动滚到底部", group: { id: "1", name: "基础参数", displayOrder: 1 } })
+    @property({
+        displayName: "自动滚到底部",
+        tooltip: "此开关在聊天这种场景很有用",
+        group: { id: "1", name: "基础参数", displayOrder: 1 },
+    })
     protected $stickAtEnd: boolean = false;
     @property({
         type: Node,
-        displayName: "空白提示",
-        tooltip: "列表无数据时的提示（可不填）",
+        displayName: "空白列表提示",
+        tooltip: "提供列表无数据时的提示（可不填）",
         group: { id: "1", name: "基础参数", displayOrder: 1 },
     })
     protected $tipEmpty: Node = null;
-    @property({ displayName: "左", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
+    @property({
+        displayName: "左",
+        tooltip: "与视图左侧的距离",
+        type: CCInteger,
+        group: { id: "2", name: "边距", displayOrder: 2 },
+    })
     protected $paddingLeft = 0;
-    @property({ displayName: "右", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
+    @property({
+        displayName: "右",
+        tooltip: "与视图右侧的距离",
+        type: CCInteger,
+        group: { id: "2", name: "边距", displayOrder: 2 },
+    })
     protected $paddingRight = 0;
-    @property({ displayName: "上", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
+    @property({
+        displayName: "上",
+        tooltip: "与视图上方的距离",
+        type: CCInteger,
+        group: { id: "2", name: "边距", displayOrder: 2 },
+    })
     protected $paddingTop = 0;
-    @property({ displayName: "下", type: CCInteger, group: { id: "2", name: "边距", displayOrder: 2 } })
+    @property({
+        displayName: "下",
+        tooltip: "与视图下方的距离",
+        type: CCInteger,
+        group: { id: "2", name: "边距", displayOrder: 2 },
+    })
     protected $paddingBottom = 0;
-    @property({ displayName: "滚动开关", group: { id: "3", name: "惯性", displayOrder: 3 } })
+    @property({ displayName: "惯性开关", tooltip: "是否开启惯性滚动", group: { id: "3", name: "惯性", displayOrder: 3 } })
     protected $inertia = false;
-    @property({ displayName: "滚动倍速", group: { id: "3", name: "惯性", displayOrder: 3 } })
+    @property({
+        displayName: "滚动倍速",
+        tooltip: "可以调节滚动速度",
+        min: 0,
+        group: { id: "3", name: "惯性", displayOrder: 3 },
+    })
     protected $speed = 1;
-    @property({ displayName: "滚动阈值（毫秒）", group: { id: "3", name: "惯性", displayOrder: 3 } })
+    @property({
+        displayName: "滚动阈值（毫秒）",
+        tooltip: "从触摸开始到触摸结束，如果时间差大于此值则不会触发惯性滚动",
+        type: CCInteger,
+        group: { id: "3", name: "惯性", displayOrder: 3 },
+    })
     protected $scrollDelta = 300;
-    @property({ displayName: "滚动阈值（像素）", group: { id: "3", name: "惯性", displayOrder: 3 } })
+    @property({
+        displayName: "滚动阈值（像素）",
+        tooltip: "出触摸开始到触摸结束，如果触摸移动距离小于此值则不会触发惯性滚动",
+        type: CCInteger,
+        group: { id: "3", name: "惯性", displayOrder: 3 },
+    })
     protected $scrollSpan = 60;
-    @property({ displayName: "回弹开关", group: { id: "4", name: "回弹", displayOrder: 4 } })
+    @property({
+        displayName: "回弹开关",
+        tooltip: "是否在超出视图边界时启用回弹",
+        group: { id: "4", name: "回弹", displayOrder: 4 },
+    })
     protected $bouncable = true;
-    @property({ displayName: "回弹时间", group: { id: "4", name: "回弹", displayOrder: 4 } })
+    @property({ displayName: "回弹时间", tooltip: "回弹动画时间", group: { id: "4", name: "回弹", displayOrder: 4 } })
     protected $bounceTime = 0.1;
-    @property({ displayName: "网格数量", type: CCInteger, group: { id: "5", name: "网格参数", displayOrder: 5 } })
+    @property({
+        displayName: "网格数量",
+        tooltip: "意为一行或一列的子项数量（此属性当且仅当网格模式时有效）",
+        type: CCInteger,
+        min: 1,
+        group: { id: "5", name: "网格参数", displayOrder: 5 },
+    })
     protected $grids: number = 1;
-    @property({ displayName: "显示滚动条", group: { id: "6", name: "滚动条", displayOrder: 6 } })
+    @property({ displayName: "显示滚动条", tooltip: "是否启用滚动条", group: { id: "6", name: "滚动条", displayOrder: 6 } })
     protected $useScrollBar: boolean = false;
-    @property({ displayName: "滑块颜色", group: { id: "6", name: "滚动条", displayOrder: 6 } })
+    @property({ displayName: "滑块颜色", tooltip: "可以调整滚动条的颜色", group: { id: "6", name: "滚动条", displayOrder: 6 } })
     protected $scrollBarColor: Color = new Color(0, 0, 0, 80);
-    @property({ displayName: "滑块扁度", type: CCInteger, min: 1, group: { id: "6", name: "滚动条", displayOrder: 6 } })
+    @property({
+        displayName: "滑块扁度",
+        tooltip: "可以调整滚动条的扁度\n因为水平滚动时是高度，垂直滚动时是宽度，所以统称为扁度",
+        type: CCInteger,
+        min: 1,
+        group: { id: "6", name: "滚动条", displayOrder: 6 },
+    })
     protected $scrollBarSpan: number = 3;
-    @property({ displayName: "滑块显示时间", group: { id: "6", name: "滚动条", displayOrder: 6 } })
+    @property({
+        displayName: "滑块显示时间",
+        tooltip: "可以设定滑块出现多久后自动消失",
+        group: { id: "6", name: "滚动条", displayOrder: 6 },
+    })
     protected $scrollBarTime: number = 0.5;
 
     /** 是否水平滚动 */
