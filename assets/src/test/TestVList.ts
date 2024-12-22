@@ -3,6 +3,7 @@ import { ListTestItemPool } from "./ListTestItemPool";
 import VirtualItem from "../VirtualItem";
 import { VirtualList } from "../VirtualList";
 import { _decorator, Node } from "cc";
+import { CHINESE } from "./Chinese";
 const { ccclass } = _decorator;
 
 /** 诗词歌赋1 */
@@ -175,7 +176,7 @@ const DEFAULT_DATA_SOURCE = {
     shlist: POETRY1,
     svlist: POETRY1,
     ghlist: POETRY2,
-    gvlist: POETRY2,
+    gvlist: CHINESE.CHARACTERS_AS_ARRAY,
     tvlist: TREE_DATA,
 } as const;
 

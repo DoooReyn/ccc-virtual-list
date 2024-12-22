@@ -2,6 +2,7 @@ import { _decorator, Component, Node, EditBox, misc, Button, Sprite, Color, reso
 import { TestVList } from "./TestVList";
 import { ListTestItemPool } from "./ListTestItemPool";
 import BatchLoader from "../BatchLoader";
+import { CHINESE } from "./Chinese";
 const { ccclass, property } = _decorator;
 
 /** 案例选择 */
@@ -166,7 +167,7 @@ export class ListTestcase extends Component {
         for (let i = 0, r: number, index: number, text: string; i < count; i++) {
             r = Math.random();
             index = (r * list.count) | 0;
-            text = ((r * 100) | 0).toString();
+            text = CHINESE.RandomChineseChar();
             list.insertAt(index, text);
         }
     }
