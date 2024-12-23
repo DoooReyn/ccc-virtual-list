@@ -67,6 +67,12 @@ enum BounceType {
     END,
 }
 
+/** 事件类型 */
+export const EVENT_TYPE = {
+    /** 数量变化 */
+    DATA_CHANGED: "data_changed",
+};
+
 const __TEMP_LOC__ = new Vec3();
 
 /**
@@ -410,6 +416,7 @@ export abstract class VirtualList extends Component {
         this.checkEmptyTip();
         this.refreshView();
         this.checkEndSticky();
+        this.node.emit(EVENT_TYPE.DATA_CHANGED);
     }
 
     protected onLoad(): void {

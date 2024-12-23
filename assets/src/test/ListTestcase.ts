@@ -1,8 +1,9 @@
-import { _decorator, Component, Node, EditBox, misc, Button, Sprite, Color, resources, Prefab } from "cc";
+import { _decorator, Component, Node, EditBox, misc, Button, Sprite, Color, resources, Prefab, Label } from "cc";
 import { TestVList } from "./TestVList";
 import { ListTestItemPool } from "./ListTestItemPool";
 import BatchLoader from "../BatchLoader";
 import { CHINESE } from "./Chinese";
+import { EVENT_TYPE } from "../VirtualList";
 const { ccclass, property } = _decorator;
 
 /** 案例选择 */
@@ -65,6 +66,9 @@ export class ListTestcase extends Component {
     @property(Node)
     $endbtn: Node = null;
 
+    @property(Label)
+    $total: Label = null;
+
     private _mode: TestCaseMode = "n";
 
     /** 是否水平滚动单项布局案例 */
@@ -92,6 +96,11 @@ export class ListTestcase extends Component {
         return this._mode == "tv";
     }
 
+    /** 设置总数 */
+    public setTotal(num: number) {
+        this.$total.string = `数量：${num}`;
+    }
+
     protected start(): void {
         const queueLoader = new BatchLoader(3);
         queueLoader.add(this.onLoadComplete, this);
@@ -107,6 +116,11 @@ export class ListTestcase extends Component {
 
     protected onEnable(): void {
         this.$editbox.node.on(EditBox.EventType.EDITING_RETURN, this.onSendMsg, this);
+        this.$hlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$vlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$ghlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$gvlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$tvlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$shbtn.on(Button.EventType.CLICK, this.onChangeModeSH, this);
         this.$svbtn.on(Button.EventType.CLICK, this.onChangeModeSV, this);
         this.$ghbtn.on(Button.EventType.CLICK, this.onChangeModeGH, this);
@@ -120,6 +134,11 @@ export class ListTestcase extends Component {
 
     protected onDisable(): void {
         this.$editbox.node.off(EditBox.EventType.EDITING_RETURN, this.onSendMsg, this);
+        this.$hlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$vlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$ghlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$gvlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$tvlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$shbtn.off(Button.EventType.CLICK, this.onChangeModeSH, this);
         this.$svbtn.off(Button.EventType.CLICK, this.onChangeModeSV, this);
         this.$ghbtn.off(Button.EventType.CLICK, this.onChangeModeGH, this);
@@ -129,6 +148,11 @@ export class ListTestcase extends Component {
         this.$grbtn.off(Button.EventType.CLICK, this.onRemoveItem, this);
         this.$startbtn.off(Button.EventType.CLICK, this.onScrollToStart, this);
         this.$endbtn.off(Button.EventType.CLICK, this.onSrollToEnd, this);
+    }
+
+    private onDataChanged() {
+        const list = this.getListByMode();
+        this.setTotal(list.count);
     }
 
     /** 预制体加载完成 */
@@ -158,6 +182,7 @@ export class ListTestcase extends Component {
         this.$ghbtn.getComponent(Sprite).color = this.isModeGH ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
         this.$gvbtn.getComponent(Sprite).color = this.isModeGV ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
         this.$tvbtn.getComponent(Sprite).color = this.isModeTV ? BACKGROUND_COLOR.ON : BACKGROUND_COLOR.OFF;
+        this.onDataChanged();
     }
 
     /** 随机插入几项 */
