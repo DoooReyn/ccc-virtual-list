@@ -39,6 +39,9 @@ export class ListTestcase extends Component {
     @property(EditBox)
     $editbox: EditBox = null;
 
+    @property(EditBox)
+    $jumpbox: EditBox = null;
+
     @property(Node)
     $shbtn: Node = null;
 
@@ -116,6 +119,7 @@ export class ListTestcase extends Component {
 
     protected onEnable(): void {
         this.$editbox.node.on(EditBox.EventType.EDITING_RETURN, this.onSendMsg, this);
+        this.$jumpbox.node.on(EditBox.EventType.EDITING_RETURN, this.onJumpTo, this);
         this.$hlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$vlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$ghlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
@@ -134,6 +138,7 @@ export class ListTestcase extends Component {
 
     protected onDisable(): void {
         this.$editbox.node.off(EditBox.EventType.EDITING_RETURN, this.onSendMsg, this);
+        this.$jumpbox.node.off(EditBox.EventType.EDITING_RETURN, this.onJumpTo, this);
         this.$hlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$vlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$ghlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
@@ -266,6 +271,19 @@ export class ListTestcase extends Component {
         this.$editbox.string = "";
         misc.callInNextTick(() => {
             this.$editbox.setFocus();
+        });
+    }
+
+    /** 跳转到指定索引 */
+    private onJumpTo() {
+        const text = this.$jumpbox.string;
+        if (text.length > 0) {
+            const index = parseInt(text);
+            const list = this.getListByMode();
+            list.scrollToIndex(index, 0.3);
+        }
+        misc.callInNextTick(() => {
+            this.$jumpbox.setFocus();
         });
     }
 }
