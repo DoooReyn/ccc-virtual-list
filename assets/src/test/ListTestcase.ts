@@ -134,6 +134,14 @@ export class ListTestcase extends Component {
         this.$grbtn.on(Button.EventType.CLICK, this.onRemoveItem, this);
         this.$startbtn.on(Button.EventType.CLICK, this.onScrollToStart, this);
         this.$endbtn.on(Button.EventType.CLICK, this.onSrollToEnd, this);
+
+        this.$vlist.node.on(EVENT_TYPE.DATA_CHANGED, (count: number) => console.log("数据量变化", count), this);
+        this.$vlist.node.on(EVENT_TYPE.SCROLL_TO_END, () => console.log("滚到末尾"), this);
+        this.$vlist.node.on(EVENT_TYPE.SCROLL_TO_START, () => console.log("滚到开头"), this);
+        this.$vlist.node.on(EVENT_TYPE.BOUNCE_END, () => console.log("末尾回弹"), this);
+        this.$vlist.node.on(EVENT_TYPE.BOUNCE_START, () => console.log("开头回弹"), this);
+        this.$vlist.node.on(EVENT_TYPE.SCROLL_TO_INDEX, (index: number) => console.log("滚到索引", index), this);
+        this.$vlist.node.on(EVENT_TYPE.INERTIA_SCROLLING, () => console.log("惯性滚动中"), this);
     }
 
     protected onDisable(): void {

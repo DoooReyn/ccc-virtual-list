@@ -71,6 +71,18 @@ enum BounceType {
 export const EVENT_TYPE = {
     /** 数量变化 */
     DATA_CHANGED: "data_changed",
+    /** 滚动到开始处 */
+    SCROLL_TO_START: "scroll_to_start",
+    /** 滚动到结束处 */
+    SCROLL_TO_END: "scroll_to_end",
+    /** 滚动到索引处 */
+    SCROLL_TO_INDEX: "scroll_to_index",
+    /** 惯性滚动中 */
+    INERTIA_SCROLLING: "scrolling",
+    /** 可以触发开始处回弹 */
+    BOUNCE_START: "bounce_start",
+    /** 可以触发结束处回弹 */
+    BOUNCE_END: "bounce_end",
 };
 
 const __TEMP_LOC__ = new Vec3();
@@ -416,7 +428,7 @@ export abstract class VirtualList extends Component {
         this.checkEmptyTip();
         this.refreshView();
         this.checkEndSticky();
-        this.node.emit(EVENT_TYPE.DATA_CHANGED);
+        this.node.emit(EVENT_TYPE.DATA_CHANGED, this.count);
     }
 
     protected onLoad(): void {
@@ -485,6 +497,7 @@ export abstract class VirtualList extends Component {
 
     protected lateUpdate(dt: number): void {
         if (this._scrolling) {
+            this.node.emit(EVENT_TYPE.INERTIA_SCROLLING);
             if (this._scrollDelta <= 0) {
                 this.stopScroll();
                 this.checkBounce();
@@ -695,6 +708,7 @@ export abstract class VirtualList extends Component {
         }
         if (this.$bouncable) {
             this.scrollToStart(this.bouncableTime);
+            this.node.emit(EVENT_TYPE.BOUNCE_START);
         }
     }
 
@@ -708,6 +722,7 @@ export abstract class VirtualList extends Component {
         }
         if (this.$bouncable) {
             this.scrollToEnd(this.bouncableTime);
+            this.node.emit(EVENT_TYPE.BOUNCE_END);
         }
     }
 
@@ -1241,12 +1256,15 @@ export abstract class VirtualList extends Component {
         switch (this._scrollMode) {
             case LIST_SCROLL_MODE.INDEX:
                 ok = this.isStopAtIndex(this._toIndex);
+                if (ok) this.node.emit(EVENT_TYPE.SCROLL_TO_INDEX, this._toIndex);
                 break;
             case LIST_SCROLL_MODE.END:
                 ok = this.isStopAtEnd();
+                if (ok) this.node.emit(EVENT_TYPE.SCROLL_TO_END);
                 break;
             case LIST_SCROLL_MODE.START:
                 ok = this.isStopAtStart();
+                if (ok) this.node.emit(EVENT_TYPE.SCROLL_TO_START);
                 break;
             default:
                 break;
