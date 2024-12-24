@@ -631,18 +631,19 @@ export abstract class VirtualList extends Component {
 
     /** 刷新列表 */
     private refreshView() {
-        const rc = this._vitems.length;
+        const vc = this._vitems.length;
         const dc = this._dataSource.length;
-        const count = rc - dc;
+        const count = vc - dc;
         if (count > 0) {
             // 清理虚拟子项【虚拟子项多了】
-            for (let i = rc - 1; i >= dc; i--) {
+            for (let i = vc - 1; i >= dc; i--) {
                 this.recycleVirtualItem(i);
             }
-        } else if (count < 0) {
+        }
+        if (count < 0) {
             // 增加虚拟子项【虚拟子项不足】
-            for (let i = 0; i < -count; i++) {
-                this.acquireVirtualItem(i + rc);
+            for (let i = vc, l = -count + vc; i < l; i++) {
+                this.acquireVirtualItem(i);
             }
         }
         // 重置虚拟子项
@@ -700,7 +701,7 @@ export abstract class VirtualList extends Component {
      * 虚拟子项构建完毕
      * @override 子类可以通过复写此方法来处理虚拟子项构建完毕后的逻辑
      */
-    protected onVirtualItemBuilt() {}
+    protected onVirtualItemBuilt() { }
 
     /** 构建单项布局 */
     private buildSingleLayout() {
