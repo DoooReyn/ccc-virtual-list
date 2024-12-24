@@ -42,14 +42,7 @@ export default class VirtualItem extends ReusableObject {
      */
     public checkBounds(bounds: Rect) {
         if (this.c && !this.m) return false;
-        const { x, y } = this.l.container.position;
-
-        this._r.set(this.x + x, this.y + y, this.w, this.h);
-        // if (this.l.horizontal) {
-        //     this._r.set(this.x + bounds.x + x, this.y + bounds.y - this.h / 2, this.w, this.h);
-        // } else {
-        //     this._r.set(this.x + bounds.x + x, this.y + y + bounds.y - this.l.minHeight / 2, this.w, this.h);
-        // }
+        this._r.set(this.x + this.l.container.position.x, this.y + this.l.container.position.y, this.w, this.h);
         return this._r.intersects(bounds);
     }
 

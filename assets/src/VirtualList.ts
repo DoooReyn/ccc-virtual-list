@@ -135,6 +135,8 @@ export abstract class VirtualList extends Component {
     private _scrollBar: ScrollBar = null;
     /** 模拟回调 */
     private _simulatelHandler: Function = null;
+    /** 数据源是否改变 */
+    private _dataDirty: boolean = false;
 
     /** 是否水平滚动 */
     public get horizontal() {
@@ -298,12 +300,14 @@ export abstract class VirtualList extends Component {
      * @param data 数据源
      */
     public set data(data: any[]) {
+        this._dataDirty = true;
         this._dataSource = data;
         this._stickEndDirty = true;
         this.checkEmptyTip();
         this.refreshView();
         this.checkEndSticky();
         this.node.emit(EVENT_TYPE.DATA_CHANGED, this.count);
+        this._dataDirty = false;
     }
 
     protected onLoad(): void {
@@ -409,7 +413,7 @@ export abstract class VirtualList extends Component {
         if (item) {
             item.setPosition(vitem.position);
             item.getComponent(UITransform).setContentSize(...this.preGetItemSize(vitem.i));
-            if (!item[VISIBLE_TAG]) {
+            if (!item[VISIBLE_TAG] || this._dataDirty) {
                 item.active = true;
                 item[VISIBLE_TAG] = true;
                 this.renderItem(item, vitem.i);
@@ -1196,9 +1200,44 @@ export abstract class VirtualList extends Component {
         if (pos) {
             this._toIndex = index;
             this._scrollMode = LIST_SCROLL_MODE.INDEX;
+            delta = this.calculateFinalHugeDelta(delta);
             this.scrollTo(pos, delta);
         }
     }
+
+    /** 
+     * 是否超大尺寸的容器
+     * @warning 默认当容器尺寸大于最小尺寸的20倍时，视为超大尺寸，在此情况下，滚动动画时间会大幅缩短，否则计算量会非常大
+     * @info 子类可以重写以适应需要
+     * @returns 
+     */
+    protected get isHugeSize() {
+        return (this.horizontal ? this._containerTransform.width / this._minWidth : this._containerTransform.height / this._minHeight) > 20;
+    }
+
+    /**
+     * 计算超大尺寸的滚动动画时间
+     * @info 子类可以重写以适应需要
+     * @param delta 时间
+     * @returns
+     */
+    protected calcalateHugeDelta(delta: number) {
+        return Math.sqrt(delta * 100) / 100;
+    }
+
+    /**
+     * 计算最终的滚动动画时间
+     *
+     * @param delta 时间
+     * @returns 最终时间
+     */
+    private calculateFinalHugeDelta(delta: number) {
+        if (delta > 0 && this.isHugeSize) {
+            delta = this.calcalateHugeDelta(delta);
+        }
+        return delta;
+    }
+
 
     /**
      * 滚动到开始处
@@ -1207,6 +1246,7 @@ export abstract class VirtualList extends Component {
     public scrollToStart(delta: number = 0) {
         this._scrollMode = LIST_SCROLL_MODE.START;
         this._toIndex = 0;
+        delta = this.calculateFinalHugeDelta(delta);
         this.scrollTo(this.startPos, delta);
     }
 
@@ -1217,6 +1257,7 @@ export abstract class VirtualList extends Component {
     public scrollToEnd(delta: number = 0) {
         this._scrollMode = LIST_SCROLL_MODE.END;
         this._toIndex = this.count - 1;
+        delta = this.calculateFinalHugeDelta(delta);
         this.scrollTo(this.endPos, delta);
     }
 
