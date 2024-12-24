@@ -34,6 +34,14 @@ export const EVENT_TYPE = {
 
 /** 临时用的位置信息 */
 const __TEMP_LOC__ = new Vec3();
+/** 临时用的速度X */
+let SPEED_X: number = 0;
+/** 临时用的速度Y */
+let SPEED_Y: number = 0;
+/** 临时用的位置X */
+let POS_X: number = 0;
+/** 临时用的位置Y */
+let POS_Y: number = 0;
 
 /**
  * 虚拟列表
@@ -46,7 +54,7 @@ export abstract class VirtualList extends Component {
     @property(PROPERTY.VIRTUAL_LIST.LIST_DIRECTION.P)
     protected $direction: number = PROPERTY.VIRTUAL_LIST.LIST_DIRECTION.D;
     @property(PROPERTY.VIRTUAL_LIST.LAYOUT_MODE.P)
-    protected $layout: number  = PROPERTY.VIRTUAL_LIST.LAYOUT_MODE.D;
+    protected $layout: number = PROPERTY.VIRTUAL_LIST.LAYOUT_MODE.D;
     @property(PROPERTY.VIRTUAL_LIST.SPACING.P)
     protected $spacing: number = PROPERTY.VIRTUAL_LIST.SPACING.D;
     @property(PROPERTY.VIRTUAL_LIST.STICK_AT_END.P)
@@ -374,18 +382,11 @@ export abstract class VirtualList extends Component {
             if (this.checkBounce()) return;
             this._scrollDirty = true;
             this._scrollDelta -= dt * 0.1;
-            const speedX = this._scrollOffset.x * this._scrollDelta * this.$speed;
-            const speedY = this._scrollOffset.y * this._scrollDelta * this.$speed;
-            const pos = this._container.position;
-            if (this.horizontal) {
-                this._container.setPosition(pos.x + speedX, pos.y);
-            } else {
-                this._container.setPosition(pos.x, pos.y + speedY);
-            }
-            // const next: Vec3 = this.horizontal ? new Vec3(pos.x + speedX, pos.y) : new Vec3(pos.x, pos.y + speedY);
-            // this._container.setPosition(next);
-            // if (!this.checkBounce(next)) {
-            // }
+            SPEED_X = this._scrollOffset.x * this._scrollDelta * this.$speed;
+            SPEED_Y = this._scrollOffset.y * this._scrollDelta * this.$speed;
+            POS_X = this.horizontal ? this._container.position.x + SPEED_X : this._container.position.x;
+            POS_Y = this.horizontal ? this._container.position.y : this._container.position.y + SPEED_Y;
+            this._container.setPosition(POS_X, POS_Y);
         }
         if (this._animating || this._scrollDirty) {
             if (this._scrollDirty) this._scrollDirty = false;
