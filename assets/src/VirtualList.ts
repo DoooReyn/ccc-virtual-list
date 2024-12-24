@@ -44,9 +44,9 @@ export abstract class VirtualList extends Component {
     @property(PROPERTY.VIRTUAL_LIST.DEBUG_DRAW.P)
     protected $debugDraw: boolean = PROPERTY.VIRTUAL_LIST.DEBUG_DRAW.D;
     @property(PROPERTY.VIRTUAL_LIST.LIST_DIRECTION.P)
-    protected $direction = PROPERTY.VIRTUAL_LIST.LIST_DIRECTION.D;
+    protected $direction: number = PROPERTY.VIRTUAL_LIST.LIST_DIRECTION.D;
     @property(PROPERTY.VIRTUAL_LIST.LAYOUT_MODE.P)
-    protected $layout = PROPERTY.VIRTUAL_LIST.LAYOUT_MODE.D;
+    protected $layout: number  = PROPERTY.VIRTUAL_LIST.LAYOUT_MODE.D;
     @property(PROPERTY.VIRTUAL_LIST.SPACING.P)
     protected $spacing: number = PROPERTY.VIRTUAL_LIST.SPACING.D;
     @property(PROPERTY.VIRTUAL_LIST.STICK_AT_END.P)
