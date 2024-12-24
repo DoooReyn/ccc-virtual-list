@@ -1,7 +1,4 @@
-import {
-  _decorator, Color, Component, Event, EventMouse, EventTouch, Graphics, Input, Mask, Node, Rect, Size, tween, Tween,
-  UITransform, Vec2, Vec3,
-} from "cc";
+import { _decorator, Color, Component, Event, EventMouse, EventTouch, Graphics, Input, Mask, Node, Rect, Size, tween, Tween, UITransform, Vec2, Vec3 } from "cc";
 
 import { BounceType, LIST_DIRCTION, LIST_LAYOUT, LIST_SCROLL_MODE } from "./Definitions";
 import { PROPERTY } from "./Property";
@@ -35,15 +32,15 @@ export const EVENT_TYPE = {
 };
 
 /** 临时用的位置信息 */
-const __TEMP_LOC__ = new Vec3();
+const V_LOC = new Vec3();
 /** 临时用的速度X */
-let SPEED_X: number = 0;
+let V_SPEED_X: number = 0;
 /** 临时用的速度Y */
-let SPEED_Y: number = 0;
+let V_SPEED_Y: number = 0;
 /** 临时用的位置X */
-let POS_X: number = 0;
+let V_POS_X: number = 0;
 /** 临时用的位置Y */
-let POS_Y: number = 0;
+let V_POS_Y: number = 0;
 
 /**
  * 虚拟列表
@@ -378,17 +375,17 @@ export abstract class VirtualList extends Component {
             this.node.emit(EVENT_TYPE.INERTIA_SCROLLING);
             if (this._scrollDelta <= 0) {
                 this.stopScroll();
-                this.checkBounce();
+                this.handleBounce();
                 return;
             }
-            if (this.checkBounce()) return;
+            if (this.handleBounce()) return;
             this._scrollDirty = true;
             this._scrollDelta -= dt * 0.1;
-            SPEED_X = this._scrollOffset.x * this._scrollDelta * this.$speed;
-            SPEED_Y = this._scrollOffset.y * this._scrollDelta * this.$speed;
-            POS_X = this.horizontal ? this._container.position.x + SPEED_X : this._container.position.x;
-            POS_Y = this.horizontal ? this._container.position.y : this._container.position.y + SPEED_Y;
-            this._container.setPosition(POS_X, POS_Y);
+            V_SPEED_X = this._scrollOffset.x * this._scrollDelta * this.$speed;
+            V_SPEED_Y = this._scrollOffset.y * this._scrollDelta * this.$speed;
+            V_POS_X = this.horizontal ? this._container.position.x + V_SPEED_X : this._container.position.x;
+            V_POS_Y = this.horizontal ? this._container.position.y : this._container.position.y + V_SPEED_Y;
+            this._container.setPosition(V_POS_X, V_POS_Y);
         }
         if (this._animating || this._scrollDirty) {
             if (this._scrollDirty) this._scrollDirty = false;
@@ -489,31 +486,31 @@ export abstract class VirtualList extends Component {
             const { x, y } = this._container.position;
             if (this.horizontal) {
                 if (!this.$bouncable) {
-                    __TEMP_LOC__.set(x + delta.x, y);
-                    if (this.checkBounce(__TEMP_LOC__)) {
-                        __TEMP_LOC__.set(0, 0);
+                    V_LOC.set(x + delta.x, y);
+                    if (this.handleBounce(V_LOC)) {
+                        V_LOC.set(0, 0);
                     }
                 } else {
-                    __TEMP_LOC__.set(this._lastPos.x, this._lastPos.y);
+                    V_LOC.set(this._lastPos.x, this._lastPos.y);
                     this._lastPos.x += delta.x;
                     this._container.setPosition(x + delta.x, y);
                 }
             } else {
                 if (!this.$bouncable) {
-                    __TEMP_LOC__.set(x, y + delta.y);
-                    if (this.checkBounce(__TEMP_LOC__)) {
-                        __TEMP_LOC__.set(0, 0);
+                    V_LOC.set(x, y + delta.y);
+                    if (this.handleBounce(V_LOC)) {
+                        V_LOC.set(0, 0);
                     }
                 } else {
-                    __TEMP_LOC__.set(this._lastPos.x, this._lastPos.y);
+                    V_LOC.set(this._lastPos.x, this._lastPos.y);
                     this._lastPos.y += delta.y;
                     this._container.setPosition(x, y + delta.y);
                 }
             }
             this._scrollDirty = true;
         }
-        this.cancelSimulate();
-        this._simulatelHandler = this.startSimulate.bind(this, e);
+        this.cancelSimulation();
+        this._simulatelHandler = this.startSimulation.bind(this, e);
         this.scheduleOnce(this._simulatelHandler, 0.5);
         this.stopPropagationIfTargetIsMe(e);
     }
@@ -541,9 +538,9 @@ export abstract class VirtualList extends Component {
      * @param e 触摸事件
      */
     private onTouchLeave(e: EventTouch) {
-        this.cancelSimulate();
-        if (this.checkBounce()) return;
-        if (__TEMP_LOC__.equals3f(0, 0, 0)) return;
+        this.cancelSimulation();
+        if (this.handleBounce()) return;
+        if (V_LOC.equals3f(0, 0, 0)) return;
         if (this.$inertia) {
             this._leaveAt = Date.now();
             this._leavePos.x = e.getLocationX();
@@ -560,15 +557,17 @@ export abstract class VirtualList extends Component {
     }
 
     /** 开始模拟触摸取消事件 */
-    private startSimulate(e: EventTouch) {
-        const cancelEvent = new EventTouch(e.getTouches(), e.bubbles, Input.EventType.TOUCH_CANCEL);
-        cancelEvent.touch = e.touch;
-        cancelEvent.simulate = true;
-        (e.target as Node).dispatchEvent(cancelEvent);
+    private startSimulation(e: EventTouch) {
+        if (e.target instanceof Node) {
+            const cancelEvent = new EventTouch(e.getTouches(), e.bubbles, Input.EventType.TOUCH_CANCEL);
+            cancelEvent.touch = e.touch;
+            cancelEvent.simulate = true;
+            e.target.dispatchEvent(cancelEvent);
+        }
     }
 
     /** 取消模拟触摸取消事件 */
-    private cancelSimulate() {
+    private cancelSimulation() {
         if (this._simulatelHandler) {
             this.unschedule(this._simulatelHandler);
             this._simulatelHandler = null;
@@ -576,7 +575,7 @@ export abstract class VirtualList extends Component {
     }
 
     /** 应用回弹（起始处） */
-    private applyBounceStart(immediate = false) {
+    private handleBounceStart(immediate = false) {
         if (immediate || !this.$bouncable) {
             this.stopScroll();
             this._container.setPosition(this.startPos.x, this.startPos.y);
@@ -590,7 +589,7 @@ export abstract class VirtualList extends Component {
     }
 
     /** 应用回弹（结束处） */
-    private applyBounceEnd(immediate = false) {
+    private handleBounceEnd(immediate = false) {
         if (immediate || !this.$bouncable) {
             this.stopScroll();
             this._container.setPosition(this.endPos.x, this.endPos.y);
@@ -603,37 +602,31 @@ export abstract class VirtualList extends Component {
         }
     }
 
-    /** 获得回弹类型 */
-    private getBounceType(position?: Vec3) {
-        position ??= this._container.position;
-        if (this.horizontal) {
-            if (position.x > this.startPos.x) {
-                return BounceType.START;
-            } else if (position.x < this.endPos.x) {
-                return BounceType.END;
-            }
-        } else {
-            if (position.y < this.startPos.y) {
-                return BounceType.START;
-            } else if (position.y > this.endPos.y) {
-                return BounceType.END;
-            }
-        }
-        return BounceType.NONE;
-    }
-
-    /** 检查回弹 */
-    private checkBounce(position?: Vec3) {
+    /** 处理回弹 */
+    private handleBounce(position?: Vec3) {
         const immediate = !!position;
         const type = this.getBounceType(position);
         if (type == BounceType.NONE) {
             return false;
         } else if (type == BounceType.START) {
-            this.applyBounceStart(immediate);
+            this.handleBounceStart(immediate);
         } else if (type == BounceType.END) {
-            this.applyBounceEnd(immediate);
+            this.handleBounceEnd(immediate);
         }
         return true;
+    }
+
+    /**
+     * 获取回弹类型
+     * @param position 可选参数，默认为容器位置
+     * @returns 回弹类型，可以是 BounceType.START、BounceType.END 或 BounceType.NONE
+     */
+    private getBounceType(position?: Vec3) {
+        position ??= this._container.position;
+        const isHorizontal = this.horizontal;
+        if (isHorizontal ? position.x > this.startPos.x : position.y < this.startPos.y) return BounceType.START;
+        if (isHorizontal ? position.x < this.endPos.x : position.y > this.endPos.y) return BounceType.END;
+        return BounceType.NONE;
     }
 
     /** 刷新列表 */
@@ -1049,7 +1042,7 @@ export abstract class VirtualList extends Component {
 
     /** 更新边界与回弹 */
     private updateBounds() {
-        this.checkBounce();
+        this.handleBounce();
         this.checkVirtualBounds();
     }
 
