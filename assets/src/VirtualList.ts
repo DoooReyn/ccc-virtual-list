@@ -13,6 +13,8 @@ const { ccclass, property } = _decorator;
 
 /** 虚拟子项的索引标识 */
 const VIRTUAL_ID_TAG = Symbol("$vid");
+/** 可视属性标识 */
+const VISIBLE_TAG = Symbol("$visible");
 
 /** 事件类型 */
 export const EVENT_TYPE = {
@@ -410,8 +412,11 @@ export abstract class VirtualList extends Component {
         if (item) {
             item.setPosition(vitem.position);
             item.getComponent(UITransform).setContentSize(...this.preGetItemSize(vitem.i));
-            item.active = true;
-            this.renderItem(item, vitem.i);
+            if (!item[VISIBLE_TAG]) {
+                item.active = true;
+                item[VISIBLE_TAG] = true;
+                this.renderItem(item, vitem.i);
+            }
         }
     }
 
@@ -421,7 +426,10 @@ export abstract class VirtualList extends Component {
      */
     public onItemHide(vitem: VirtualItem) {
         const item = this.getItemAt(vitem.i, false);
-        if (item) this.recycleItem(item);
+        if (item) {
+            delete item[VISIBLE_TAG];
+            this.recycleItem(item);
+        }
     }
 
     /** 绘制容器边界 */
