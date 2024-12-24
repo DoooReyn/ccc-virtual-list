@@ -739,10 +739,10 @@
     "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 240,
-      "g": 38,
-      "b": 111,
-      "a": 217
+      "r": 207,
+      "g": 40,
+      "b": 114,
+      "a": 216
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
@@ -850,10 +850,10 @@
     "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 240,
-      "g": 38,
-      "b": 111,
-      "a": 217
+      "r": 207,
+      "g": 40,
+      "b": 114,
+      "a": 216
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
@@ -961,10 +961,10 @@
     "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 240,
-      "g": 38,
-      "b": 111,
-      "a": 217
+      "r": 207,
+      "g": 40,
+      "b": 114,
+      "a": 216
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,
@@ -1072,10 +1072,10 @@
     "$useScrollBar": true,
     "$scrollBarColor": {
       "__type__": "cc.Color",
-      "r": 240,
-      "g": 38,
-      "b": 111,
-      "a": 217
+      "r": 207,
+      "g": 40,
+      "b": 114,
+      "a": 216
     },
     "$scrollBarSpan": 3,
     "$scrollBarTime": 0.5,

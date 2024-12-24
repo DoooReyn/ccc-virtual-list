@@ -1,71 +1,18 @@
 import {
-    _decorator,
-    Component,
-    Node,
-    CCInteger,
-    Mask,
-    Enum,
-    UITransform,
-    Vec2,
-    Graphics,
-    Color,
-    EventTouch,
-    Vec3,
-    tween,
-    Tween,
-    Size,
-    EventMouse,
-    Event,
-    Rect,
-    Input,
+  _decorator, Color, Component, Event, EventMouse, EventTouch, Graphics, Input, Mask, Node, Rect, Size, tween, Tween,
+  UITransform, Vec2, Vec3,
 } from "cc";
+
+import { BounceType, LIST_DIRCTION, LIST_LAYOUT, LIST_SCROLL_MODE } from "./Definitions";
+import { PROPERTY } from "./Property";
+import ScrollBar from "./ScrollBar";
 import VirtualItem from "./VirtualItem";
 import { VirtualItemPool } from "./VirtualItemPool";
-import ScrollBar from "./ScrollBar";
+
 const { ccclass, property } = _decorator;
 
 /** 虚拟子项的索引标识 */
 const VIRTUAL_ID_TAG = Symbol("$vid");
-
-/** 列表滚动方向 */
-const LIST_DIRCTION = Enum({
-    /** 水平 */
-    HORIZONTAL: 0,
-    /** 垂直 */
-    VERTICAL: 1,
-});
-
-/** 列表布局方式 */
-const LIST_LAYOUT = Enum({
-    /** 单项 */
-    SINGLE: 0,
-    /** 网格 */
-    GRID: 1,
-});
-
-/** 列表滚动方式 */
-enum LIST_SCROLL_MODE {
-    /** 停止滚动 */
-    STOP = -1,
-    /** 滚到指定位置 */
-    POSITION = 0,
-    /** 滚到指定索引位置 */
-    INDEX,
-    /** 滚到起始处 */
-    START,
-    /** 滚到结束处 */
-    END,
-}
-
-/** 回弹类型 */
-enum BounceType {
-    /** 无回弹 */
-    NONE = 0,
-    /** 在起始处回弹 */
-    START,
-    /** 在结束处回弹 */
-    END,
-}
 
 /** 事件类型 */
 export const EVENT_TYPE = {
@@ -85,6 +32,7 @@ export const EVENT_TYPE = {
     BOUNCE_END: "bounce_end",
 };
 
+/** 临时用的位置信息 */
 const __TEMP_LOC__ = new Vec3();
 
 /**
@@ -93,6 +41,49 @@ const __TEMP_LOC__ = new Vec3();
  */
 @ccclass("VirtualList")
 export abstract class VirtualList extends Component {
+    @property(PROPERTY.VIRTUAL_LIST.DEBUG_DRAW.P)
+    protected $debugDraw: boolean = PROPERTY.VIRTUAL_LIST.DEBUG_DRAW.D;
+    @property(PROPERTY.VIRTUAL_LIST.LIST_DIRECTION.P)
+    protected $direction = PROPERTY.VIRTUAL_LIST.LIST_DIRECTION.D;
+    @property(PROPERTY.VIRTUAL_LIST.LAYOUT_MODE.P)
+    protected $layout = PROPERTY.VIRTUAL_LIST.LAYOUT_MODE.D;
+    @property(PROPERTY.VIRTUAL_LIST.SPACING.P)
+    protected $spacing: number = PROPERTY.VIRTUAL_LIST.SPACING.D;
+    @property(PROPERTY.VIRTUAL_LIST.STICK_AT_END.P)
+    protected $stickAtEnd: boolean = PROPERTY.VIRTUAL_LIST.STICK_AT_END.D;
+    @property(PROPERTY.VIRTUAL_LIST.EMPTY_NODE.P)
+    protected $tipEmpty: Node = PROPERTY.VIRTUAL_LIST.EMPTY_NODE.D;
+    @property(PROPERTY.VIRTUAL_LIST.PADDING_LEFT.P)
+    protected $paddingLeft: number = PROPERTY.VIRTUAL_LIST.PADDING_LEFT.D;
+    @property(PROPERTY.VIRTUAL_LIST.PADDING_RIGHT.P)
+    protected $paddingRight: number = PROPERTY.VIRTUAL_LIST.PADDING_RIGHT.D;
+    @property(PROPERTY.VIRTUAL_LIST.PADDING_TOP.P)
+    protected $paddingTop: number = PROPERTY.VIRTUAL_LIST.PADDING_TOP.D;
+    @property(PROPERTY.VIRTUAL_LIST.PADDING_BOTTOM.P)
+    protected $paddingBottom: number = PROPERTY.VIRTUAL_LIST.PADDING_BOTTOM.D;
+    @property(PROPERTY.VIRTUAL_LIST.INERTIA.P)
+    protected $inertia: boolean = PROPERTY.VIRTUAL_LIST.INERTIA.D;
+    @property(PROPERTY.VIRTUAL_LIST.SCROLL_SPEED.P)
+    protected $speed: number = PROPERTY.VIRTUAL_LIST.SCROLL_SPEED.D;
+    @property(PROPERTY.VIRTUAL_LIST.SCROLL_DELTA.P)
+    protected $scrollDelta: number = PROPERTY.VIRTUAL_LIST.SCROLL_DELTA.D;
+    @property(PROPERTY.VIRTUAL_LIST.SCROLL_SPAN.P)
+    protected $scrollSpan: number = PROPERTY.VIRTUAL_LIST.SCROLL_SPAN.D;
+    @property(PROPERTY.VIRTUAL_LIST.BOUNCABLE.P)
+    protected $bouncable: boolean = PROPERTY.VIRTUAL_LIST.BOUNCABLE.D;
+    @property(PROPERTY.VIRTUAL_LIST.BOUNCE_TIME.P)
+    protected $bounceTime: number = PROPERTY.VIRTUAL_LIST.BOUNCE_TIME.D;
+    @property(PROPERTY.VIRTUAL_LIST.GRID.P)
+    protected $grids: number = PROPERTY.VIRTUAL_LIST.GRID.D;
+    @property(PROPERTY.VIRTUAL_LIST.USE_SCROLL_BAR.P)
+    protected $useScrollBar: boolean = PROPERTY.VIRTUAL_LIST.USE_SCROLL_BAR.D;
+    @property(PROPERTY.VIRTUAL_LIST.SCROLL_BAR_COLOR.P)
+    protected $scrollBarColor: Color = PROPERTY.VIRTUAL_LIST.SCROLL_BAR_COLOR.D;
+    @property(PROPERTY.VIRTUAL_LIST.SCROLL_BAR_SPAN.P)
+    protected $scrollBarSpan: number = PROPERTY.VIRTUAL_LIST.SCROLL_BAR_SPAN.D;
+    @property(PROPERTY.VIRTUAL_LIST.SCROLL_BAR_TIME.P)
+    protected $scrollBarTime: number = PROPERTY.VIRTUAL_LIST.SCROLL_BAR_TIME.D;
+
     /** 容器最小宽度 */
     private _minWidth: number = 0;
     /** 容器最小高度 */
@@ -138,128 +129,6 @@ export abstract class VirtualList extends Component {
     /** 模拟回调 */
     private _simulatelHandler: Function = null;
 
-    @property({ displayName: "调试绘制", tooltip: "绘制视图调试框，方便开发阶段发现问题", displayOrder: 0 })
-    protected $debugDraw: boolean = false;
-    @property({
-        displayName: "滚动方向",
-        tooltip: "分为水平滚动和垂直滚动",
-        type: LIST_DIRCTION,
-        group: { id: "1", name: "基础参数", displayOrder: 1 },
-    })
-    protected $direction = LIST_DIRCTION.VERTICAL;
-    @property({
-        displayName: "布局方式",
-        tooltip: "分为单项布局和网格布局\n单项即一行或一列只有一个子项\n网格即一行或一列有多个子项",
-        type: LIST_LAYOUT,
-        group: { id: "1", name: "基础参数", displayOrder: 1 },
-    })
-    protected $layout = LIST_LAYOUT.SINGLE;
-    @property({
-        displayName: "子项间距",
-        tooltip: "每个子项之间的间隔",
-        type: CCInteger,
-        group: { id: "1", name: "基础参数", displayOrder: 1 },
-    })
-    protected $spacing = 0;
-    @property({
-        displayName: "自动滚到底部",
-        tooltip: "此开关在聊天这种场景很有用",
-        group: { id: "1", name: "基础参数", displayOrder: 1 },
-    })
-    protected $stickAtEnd: boolean = false;
-    @property({
-        type: Node,
-        displayName: "空白列表提示",
-        tooltip: "提供列表无数据时的提示（可不填）",
-        group: { id: "1", name: "基础参数", displayOrder: 1 },
-    })
-    protected $tipEmpty: Node = null;
-    @property({
-        displayName: "左",
-        tooltip: "与视图左侧的距离",
-        type: CCInteger,
-        group: { id: "2", name: "边距", displayOrder: 2 },
-    })
-    protected $paddingLeft = 0;
-    @property({
-        displayName: "右",
-        tooltip: "与视图右侧的距离",
-        type: CCInteger,
-        group: { id: "2", name: "边距", displayOrder: 2 },
-    })
-    protected $paddingRight = 0;
-    @property({
-        displayName: "上",
-        tooltip: "与视图上方的距离",
-        type: CCInteger,
-        group: { id: "2", name: "边距", displayOrder: 2 },
-    })
-    protected $paddingTop = 0;
-    @property({
-        displayName: "下",
-        tooltip: "与视图下方的距离",
-        type: CCInteger,
-        group: { id: "2", name: "边距", displayOrder: 2 },
-    })
-    protected $paddingBottom = 0;
-    @property({ displayName: "惯性开关", tooltip: "是否开启惯性滚动", group: { id: "3", name: "惯性", displayOrder: 3 } })
-    protected $inertia = false;
-    @property({
-        displayName: "滚动倍速",
-        tooltip: "可以调节滚动速度",
-        min: 0,
-        group: { id: "3", name: "惯性", displayOrder: 3 },
-    })
-    protected $speed = 1;
-    @property({
-        displayName: "滚动阈值（毫秒）",
-        tooltip: "从触摸开始到触摸结束，如果时间差大于此值则不会触发惯性滚动",
-        type: CCInteger,
-        group: { id: "3", name: "惯性", displayOrder: 3 },
-    })
-    protected $scrollDelta = 300;
-    @property({
-        displayName: "滚动阈值（像素）",
-        tooltip: "出触摸开始到触摸结束，如果触摸移动距离小于此值则不会触发惯性滚动",
-        type: CCInteger,
-        group: { id: "3", name: "惯性", displayOrder: 3 },
-    })
-    protected $scrollSpan = 60;
-    @property({
-        displayName: "回弹开关",
-        tooltip: "是否在超出视图边界时启用回弹",
-        group: { id: "4", name: "回弹", displayOrder: 4 },
-    })
-    protected $bouncable = true;
-    @property({ displayName: "回弹时间", tooltip: "回弹动画时间", group: { id: "4", name: "回弹", displayOrder: 4 } })
-    protected $bounceTime = 0.1;
-    @property({
-        displayName: "网格数量",
-        tooltip: "意为一行或一列的子项数量（此属性当且仅当网格模式时有效）",
-        type: CCInteger,
-        min: 1,
-        group: { id: "5", name: "网格参数", displayOrder: 5 },
-    })
-    protected $grids: number = 1;
-    @property({ displayName: "显示滚动条", tooltip: "是否启用滚动条", group: { id: "6", name: "滚动条", displayOrder: 6 } })
-    protected $useScrollBar: boolean = false;
-    @property({ displayName: "滑块颜色", tooltip: "可以调整滚动条的颜色", group: { id: "6", name: "滚动条", displayOrder: 6 } })
-    protected $scrollBarColor: Color = new Color(0, 0, 0, 80);
-    @property({
-        displayName: "滑块扁度",
-        tooltip: "可以调整滚动条的扁度\n因为水平滚动时是高度，垂直滚动时是宽度，所以统称为扁度",
-        type: CCInteger,
-        min: 1,
-        group: { id: "6", name: "滚动条", displayOrder: 6 },
-    })
-    protected $scrollBarSpan: number = 3;
-    @property({
-        displayName: "滑块显示时间",
-        tooltip: "可以设定滑块出现多久后自动消失",
-        group: { id: "6", name: "滚动条", displayOrder: 6 },
-    })
-    protected $scrollBarTime: number = 0.5;
-
     /** 是否水平滚动 */
     public get horizontal() {
         return this.$direction == LIST_DIRCTION.HORIZONTAL;
@@ -277,7 +146,6 @@ export abstract class VirtualList extends Component {
 
     /** 视图边界 */
     public get viewBounds() {
-        // return this.node.getComponent(UITransform).getBoundingBox();
         return new Rect(-this._minWidth / 2, -this._minHeight / 2, this._minWidth, this._minHeight);
     }
 
