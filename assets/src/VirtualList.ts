@@ -1,21 +1,6 @@
 import {
-    _decorator,
-    Color,
-    Component,
-    Event,
-    EventMouse,
-    EventTouch,
-    Graphics,
-    Input,
-    Mask,
-    Node,
-    Rect,
-    Size,
-    tween,
-    Tween,
-    UITransform,
-    Vec2,
-    Vec3,
+  _decorator, Color, Component, Event, EventMouse, EventTouch, Graphics, Input, Mask, Node, Rect, Size, tween, Tween,
+  UITransform, Vec2, Vec3,
 } from "cc";
 
 import { BounceType, LIST_DIRCTION, LIST_LAYOUT, LIST_SCROLL_MODE } from "./Definitions";
@@ -440,37 +425,6 @@ export abstract class VirtualList extends Component {
         }
     }
 
-    /**
-     * 虚拟子项进入视野
-     * @param vitem 虚拟子项
-     */
-    private onItemShow(vitem: VirtualItem) {
-        const item = this.getItemAt(vitem.i, true);
-        if (item) {
-            item.setPosition(vitem.position);
-            item.getComponent(UITransform).setContentSize(...this.preGetItemSize(vitem.i));
-            if (!item[VISIBLE_TAG] || this._dataDirty) {
-                this.node.emit(EVENT_TYPE.ITEM_SHOW, vitem.i);
-                item.active = true;
-                item[VISIBLE_TAG] = true;
-                this.renderItem(item, vitem.i);
-            }
-        }
-    }
-
-    /**
-     * 虚拟子项移出视野
-     * @param vitem 虚拟子项
-     */
-    private onItemHide(vitem: VirtualItem) {
-        const item = this.getItemAt(vitem.i, false);
-        if (item) {
-            this.node.emit(EVENT_TYPE.ITEM_HIDE, vitem.i);
-            delete item[VISIBLE_TAG];
-            this.recycleItem(item);
-        }
-    }
-
     /** 绘制容器边界 */
     private drawContainerBounds() {
         if (this.$debugDraw) {
@@ -502,80 +456,6 @@ export abstract class VirtualList extends Component {
     private stopPropagationIfTargetIsMe(event: Event): void {
         if (event.eventPhase === Event.AT_TARGET && event.target === this.node) {
             event.propagationStopped = true;
-        }
-    }
-
-    /**
-     * 落下
-     * @param e 触摸事件
-     */
-    private onTouchDrop(e: EventTouch) {
-        this._dropAt = Date.now();
-        this._dropPos.x = e.getLocationX();
-        this._dropPos.y = e.getLocationY();
-    }
-
-    /**
-     * 拖拽
-     * @param e 触摸事件
-     */
-    private onTouchMove(e: EventTouch) {
-        this.stopScroll();
-        V_DELTA.set(e.getDelta().multiplyScalar(0.85));
-        if (V_DELTA.length() != 0) {
-            V_POS_X = this._container.position.x;
-            V_POS_Y = this._container.position.y;
-            this.horizontal ? (V_POS_X += V_DELTA.x) : (V_POS_Y += V_DELTA.y);
-            V_LOC.set(V_POS_X, V_POS_Y);
-            if (this.$bouncable) {
-                this._container.setPosition(V_LOC);
-                this.updateVirtualBounds();
-            } else {
-                if (this.isBounce(V_LOC)) this.handleBounce(V_LOC);
-            }
-        }
-        this.cancelSimulation();
-        this._simulatelHandler = this.startSimulation.bind(this, e);
-        this.scheduleOnce(this._simulatelHandler, 0.5);
-        this.stopPropagationIfTargetIsMe(e);
-    }
-
-    /**
-     * 鼠标滚轮滚动
-     * @param e 滚轮事件
-     */
-    private onMouseWheel(e: EventMouse) {
-        this.stopScroll();
-        V_POS_Y = e.getScrollY() * -0.1;
-        if (V_POS_Y != 0) {
-            if (this.horizontal) {
-                this._container.setPosition(this._container.position.x + V_POS_Y, this._container.position.y);
-            } else {
-                this._container.setPosition(this._container.position.x, this._container.position.y + V_POS_Y);
-            }
-            this.handleBounce();
-        }
-    }
-
-    /**
-     * 松开
-     * @param e 触摸事件
-     */
-    private onTouchLeave(e: EventTouch) {
-        this.cancelSimulation();
-        if (this.isBounce()) return this.handleBounce();
-        if (this.$inertia) {
-            this._leaveAt = Date.now();
-            this._leavePos.x = e.getLocationX();
-            this._leavePos.y = e.getLocationY();
-            const delta = this._leaveAt - this._dropAt;
-            if (this.horizontal && Math.abs(this._leavePos.x - this._dropPos.x) < this.$scrollSpan) return;
-            if (this.vertical && Math.abs(this._leavePos.y - this._dropPos.y) < this.$scrollSpan) return;
-            if (delta > this.$scrollDelta) return;
-            this._scrolling = true;
-            this._scrollDelta = delta / 1000;
-            this._scrollOffset.x = this._leavePos.x - this._dropPos.x;
-            this._scrollOffset.y = this._leavePos.y - this._dropPos.y;
         }
     }
 
@@ -1233,6 +1113,111 @@ export abstract class VirtualList extends Component {
         this._scrollMode = LIST_SCROLL_MODE.END;
         this._toIndex = this.count - 1;
         this.scrollTo(this.endPos, delta);
+    }
+
+    /**
+     * 落下
+     * @param e 触摸事件
+     */
+    private onTouchDrop(e: EventTouch) {
+        this._dropAt = Date.now();
+        this._dropPos.x = e.getLocationX();
+        this._dropPos.y = e.getLocationY();
+    }
+
+    /**
+     * 拖拽
+     * @param e 触摸事件
+     */
+    private onTouchMove(e: EventTouch) {
+        this.stopScroll();
+        V_DELTA.set(e.getDelta().multiplyScalar(0.85));
+        if (V_DELTA.length() != 0) {
+            V_POS_X = this._container.position.x;
+            V_POS_Y = this._container.position.y;
+            this.horizontal ? (V_POS_X += V_DELTA.x) : (V_POS_Y += V_DELTA.y);
+            V_LOC.set(V_POS_X, V_POS_Y);
+            if (this.$bouncable) {
+                this._container.setPosition(V_LOC);
+                this.updateVirtualBounds();
+            } else {
+                if (this.isBounce(V_LOC)) this.handleBounce(V_LOC);
+            }
+        }
+        this.cancelSimulation();
+        this._simulatelHandler = this.startSimulation.bind(this, e);
+        this.scheduleOnce(this._simulatelHandler, 0.5);
+        this.stopPropagationIfTargetIsMe(e);
+    }
+
+    /**
+     * 鼠标滚轮滚动
+     * @param e 滚轮事件
+     */
+    private onMouseWheel(e: EventMouse) {
+        this.stopScroll();
+        V_POS_Y = e.getScrollY() * -0.1;
+        if (V_POS_Y != 0) {
+            if (this.horizontal) {
+                this._container.setPosition(this._container.position.x + V_POS_Y, this._container.position.y);
+            } else {
+                this._container.setPosition(this._container.position.x, this._container.position.y + V_POS_Y);
+            }
+            this.handleBounce();
+        }
+    }
+
+    /**
+     * 松开
+     * @param e 触摸事件
+     */
+    private onTouchLeave(e: EventTouch) {
+        this.cancelSimulation();
+        if (this.isBounce()) return this.handleBounce();
+        if (this.$inertia) {
+            this._leaveAt = Date.now();
+            this._leavePos.x = e.getLocationX();
+            this._leavePos.y = e.getLocationY();
+            const delta = this._leaveAt - this._dropAt;
+            if (this.horizontal && Math.abs(this._leavePos.x - this._dropPos.x) < this.$scrollSpan) return;
+            if (this.vertical && Math.abs(this._leavePos.y - this._dropPos.y) < this.$scrollSpan) return;
+            if (delta > this.$scrollDelta) return;
+            this._scrolling = true;
+            this._scrollDelta = delta / 1000;
+            this._scrollOffset.x = this._leavePos.x - this._dropPos.x;
+            this._scrollOffset.y = this._leavePos.y - this._dropPos.y;
+        }
+    }
+
+    /**
+     * 虚拟子项进入视野
+     * @param vitem 虚拟子项
+     */
+    private onItemShow(vitem: VirtualItem) {
+        const item = this.getItemAt(vitem.i, true);
+        if (item) {
+            item.setPosition(vitem.position);
+            item.getComponent(UITransform).setContentSize(...this.preGetItemSize(vitem.i));
+            if (!item[VISIBLE_TAG] || this._dataDirty) {
+                this.node.emit(EVENT_TYPE.ITEM_SHOW, vitem.i);
+                item.active = true;
+                item[VISIBLE_TAG] = true;
+                this.renderItem(item, vitem.i);
+            }
+        }
+    }
+
+    /**
+     * 虚拟子项移出视野
+     * @param vitem 虚拟子项
+     */
+    private onItemHide(vitem: VirtualItem) {
+        const item = this.getItemAt(vitem.i, false);
+        if (item) {
+            this.node.emit(EVENT_TYPE.ITEM_HIDE, vitem.i);
+            delete item[VISIBLE_TAG];
+            this.recycleItem(item);
+        }
     }
 
     /**
