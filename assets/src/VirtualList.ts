@@ -129,8 +129,6 @@ export abstract class VirtualList extends Component {
     private _scrollOffset: Vec2 = new Vec2();
     /** 容器起始位置 */
     private _startPos: Vec3 = null;
-    /** 是否需要刷新滚动状态 */
-    private _scrollDirty: boolean = false;
     /** 触摸落下计时点 */
     private _dropAt: number = 0;
     /** 触摸松开计时点 */
@@ -405,16 +403,16 @@ export abstract class VirtualList extends Component {
                 return;
             }
             if (this.isBounce()) return this.handleBounce();
-            this._scrollDirty = true;
             this._scrollDelta -= dt * 0.1;
             V_SPEED_X = this._scrollOffset.x * this._scrollDelta * this.$speed;
             V_SPEED_Y = this._scrollOffset.y * this._scrollDelta * this.$speed;
             V_POS_X = this.horizontal ? this._container.position.x + V_SPEED_X : this._container.position.x;
             V_POS_Y = this.horizontal ? this._container.position.y : this._container.position.y + V_SPEED_Y;
             this._container.setPosition(V_POS_X, V_POS_Y);
+            this.updateVirtualBounds();
+            return;
         }
-        if (this._animating || this._scrollDirty) {
-            if (this._scrollDirty) this._scrollDirty = false;
+        if (this._animating) {
             this.updateVirtualBounds();
         }
     }
@@ -519,7 +517,6 @@ export abstract class VirtualList extends Component {
             } else {
                 if (this.isBounce(V_LOC)) this.handleBounce(V_LOC);
             }
-            this._scrollDirty = true;
         }
         this.cancelSimulation();
         this._simulatelHandler = this.startSimulation.bind(this, e);
@@ -540,7 +537,6 @@ export abstract class VirtualList extends Component {
             } else {
                 this._container.setPosition(this._container.position.x, this._container.position.y + V_POS_Y);
             }
-            this._scrollDirty = true;
             this.handleBounce();
         }
     }
@@ -756,14 +752,10 @@ export abstract class VirtualList extends Component {
             const grids = this.grids;
             const rows = Math.ceil(count / grids);
             const is = this.getItemSize(0);
-            const size = new Size(...is);
+            const size = new Size(is[0], is[1]);
             const spacing = this.$spacing;
             const vitems = this._vitems;
-            if (hor) {
-                size.height = this._minHeight;
-            } else {
-                size.width = this._minWidth;
-            }
+            hor ? (size.height = this._minHeight) : (size.width = this._minWidth);
             for (let r = 0, i = 0, c = 0, item: VirtualItem; r < rows; r++) {
                 if (hor) {
                     startY = 0;
