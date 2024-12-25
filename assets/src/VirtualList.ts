@@ -1,4 +1,7 @@
-import { _decorator, Color, Component, Event, EventMouse, EventTouch, Graphics, Input, Mask, Node, Rect, Size, tween, Tween, UITransform, Vec2, Vec3 } from "cc";
+import {
+  _decorator, Color, Component, Event, EventMouse, EventTouch, Graphics, Input, Mask, Node, Rect, Size, tween, Tween,
+  UITransform, Vec2, Vec3,
+} from "cc";
 
 import { BounceType, LIST_DIRCTION, LIST_LAYOUT, LIST_SCROLL_MODE } from "./Definitions";
 import { PROPERTY } from "./Property";
@@ -701,12 +704,6 @@ export abstract class VirtualList extends Component {
         this.checkVirtualBounds();
     }
 
-    /**
-     * 虚拟子项构建完毕
-     * @override 子类可以通过复写此方法来处理虚拟子项构建完毕后的逻辑
-     */
-    protected onVirtualItemBuilt() { }
-
     /** 构建单项布局 */
     private buildSingleLayout() {
         const hor = this.horizontal;
@@ -1093,13 +1090,11 @@ export abstract class VirtualList extends Component {
     /** 是否停在起始位置 */
     private isStopAtStart() {
         return this._container.position.equals(this.startPos);
-        // return this.isStopAtIndex(0);
     }
 
     /** 是否停在结束位置 */
     private isStopAtEnd() {
         return this._container.position.equals(this.endPos);
-        // return this.isStopAtIndex(this.count - 1);
     }
 
     /**
@@ -1169,15 +1164,37 @@ export abstract class VirtualList extends Component {
             return;
         }
 
-        this.stopScroll();
-        delta = delta || 0.016;
-        this._animating = true;
         const self = this;
         const end = function () {
-            self.updateBounds();
-            self.schedule(self.checkScrollMode);
+            self._container.setPosition(position);
+            self.checkScrollMode();
         };
-        tween(this._container).to(delta, { position }).call(end).start();
+        let action: "to" | "by" = "to";
+        let loc: Vec3 = new Vec3(position);
+
+        this.stopScroll();
+        this._animating = true;
+
+        if (this.isHugeSize) {
+            if (this.horizontal) {
+                const diff = position.x - this._container.position.x;
+                if (Math.abs(diff) > this._minWidth * 3) {
+                    loc.set(Math.sign(diff) * this._minWidth * 3 * delta, 0);
+                    action = "by";
+                }
+            } else {
+                const diff = position.y - this._container.position.y;
+                if (Math.abs(diff) > this._minHeight * 3) {
+                    loc.set(0, Math.sign(diff) * this._minHeight * 3 * delta);
+                    action = "by";
+                }
+            }
+        }
+        if (action == "to") {
+            tween(this._container).to(delta, { position: loc }, { easing: "quadIn" }).call(end).start();
+        } else {
+            tween(this._container).by(delta, { position: loc }, { easing: "quadIn" }).call(end).start();
+        }
     }
 
     /**
@@ -1200,44 +1217,25 @@ export abstract class VirtualList extends Component {
         if (pos) {
             this._toIndex = index;
             this._scrollMode = LIST_SCROLL_MODE.INDEX;
-            delta = this.calculateFinalHugeDelta(delta);
             this.scrollTo(pos, delta);
         }
     }
 
-    /** 
-     * 是否超大尺寸的容器
-     * @warning 默认当容器尺寸大于最小尺寸的20倍时，视为超大尺寸，在此情况下，滚动动画时间会大幅缩短，否则计算量会非常大
-     * @info 子类可以重写以适应需要
-     * @returns 
-     */
-    protected get isHugeSize() {
-        return (this.horizontal ? this._containerTransform.width / this._minWidth : this._containerTransform.height / this._minHeight) > 20;
-    }
-
     /**
-     * 计算超大尺寸的滚动动画时间
+     * 是否超大尺寸的容器
+     * @warning 默认当容器尺寸大于最小尺寸的20倍时，将其视为超大尺寸容器
+     * @warning 在此情况下，滚动动画会做一些折中处理，否则计算量会非常大
+     * @warning 如果不希望使用超大尺寸方案，可以重写此方法，让它返回 false 即可
      * @info 子类可以重写以适应需要
-     * @param delta 时间
      * @returns
      */
-    protected calcalateHugeDelta(delta: number) {
-        return Math.sqrt(delta * 100) / 100;
+    protected get isHugeSize() {
+        return (
+            (this.horizontal
+                ? this._containerTransform.width / this._minWidth
+                : this._containerTransform.height / this._minHeight) > 20
+        );
     }
-
-    /**
-     * 计算最终的滚动动画时间
-     *
-     * @param delta 时间
-     * @returns 最终时间
-     */
-    private calculateFinalHugeDelta(delta: number) {
-        if (delta > 0 && this.isHugeSize) {
-            delta = this.calcalateHugeDelta(delta);
-        }
-        return delta;
-    }
-
 
     /**
      * 滚动到开始处
@@ -1246,7 +1244,6 @@ export abstract class VirtualList extends Component {
     public scrollToStart(delta: number = 0) {
         this._scrollMode = LIST_SCROLL_MODE.START;
         this._toIndex = 0;
-        delta = this.calculateFinalHugeDelta(delta);
         this.scrollTo(this.startPos, delta);
     }
 
@@ -1257,9 +1254,14 @@ export abstract class VirtualList extends Component {
     public scrollToEnd(delta: number = 0) {
         this._scrollMode = LIST_SCROLL_MODE.END;
         this._toIndex = this.count - 1;
-        delta = this.calculateFinalHugeDelta(delta);
         this.scrollTo(this.endPos, delta);
     }
+
+    /**
+     * 虚拟子项构建完毕
+     * @override 子类可以通过复写此方法来处理虚拟子项构建完毕后的逻辑
+     */
+    protected onVirtualItemBuilt() {}
 
     /**
      * 获取子项尺寸
