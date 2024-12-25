@@ -1,6 +1,21 @@
 import {
-  _decorator, Color, Component, Event, EventMouse, EventTouch, Graphics, Input, Mask, Node, Rect, Size, tween, Tween,
-  UITransform, Vec2, Vec3,
+    _decorator,
+    Color,
+    Component,
+    Event,
+    EventMouse,
+    EventTouch,
+    Graphics,
+    Input,
+    Mask,
+    Node,
+    Rect,
+    Size,
+    tween,
+    Tween,
+    UITransform,
+    Vec2,
+    Vec3,
 } from "cc";
 
 import { BounceType, LIST_DIRCTION, LIST_LAYOUT, LIST_SCROLL_MODE } from "./Definitions";
@@ -20,6 +35,10 @@ const VISIBLE_TAG = Symbol("$visible");
 export const EVENT_TYPE = {
     /** 数量变化 */
     DATA_CHANGED: "data_changed",
+    /** 子项出现 */
+    ITEM_SHOW: "item_show",
+    /** 子项消失 */
+    ITEM_HIDE: "item_hide",
     /** 滚动到开始处 */
     SCROLL_TO_START: "scroll_to_start",
     /** 滚动到结束处 */
@@ -417,6 +436,7 @@ export abstract class VirtualList extends Component {
             item.setPosition(vitem.position);
             item.getComponent(UITransform).setContentSize(...this.preGetItemSize(vitem.i));
             if (!item[VISIBLE_TAG] || this._dataDirty) {
+                this.node.emit(EVENT_TYPE.ITEM_SHOW, vitem.i);
                 item.active = true;
                 item[VISIBLE_TAG] = true;
                 this.renderItem(item, vitem.i);
@@ -431,6 +451,7 @@ export abstract class VirtualList extends Component {
     private onItemHide(vitem: VirtualItem) {
         const item = this.getItemAt(vitem.i, false);
         if (item) {
+            this.node.emit(EVENT_TYPE.ITEM_HIDE, vitem.i);
             delete item[VISIBLE_TAG];
             this.recycleItem(item);
         }

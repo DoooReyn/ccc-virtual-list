@@ -72,6 +72,9 @@ export class ListTestcase extends Component {
     @property(Label)
     $total: Label = null;
 
+    @property(Label)
+    $items: Label = null;
+
     private _mode: TestCaseMode = "n";
 
     /** 是否水平滚动单项布局案例 */
@@ -99,9 +102,14 @@ export class ListTestcase extends Component {
         return this._mode == "tv";
     }
 
-    /** 设置总数 */
-    public setTotal(num: number) {
-        this.$total.string = `数量：${num}`;
+    /** 设置数据量 */
+    public setTotal(dataCount: number) {
+        this.$total.string = `数据量: ${dataCount}`;
+    }
+
+    /** 设置节点数 */
+    public setItemCount(itemCount: number) {
+        this.$items.string = `节点数：${itemCount}`;
     }
 
     protected start(): void {
@@ -125,6 +133,16 @@ export class ListTestcase extends Component {
         this.$ghlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$gvlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$tvlist.node.on(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$hlist.node.on(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$hlist.node.on(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
+        this.$vlist.node.on(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$vlist.node.on(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
+        this.$ghlist.node.on(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$ghlist.node.on(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
+        this.$gvlist.node.on(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$gvlist.node.on(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
+        this.$tvlist.node.on(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$tvlist.node.on(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
         this.$shbtn.on(Button.EventType.CLICK, this.onChangeModeSH, this);
         this.$svbtn.on(Button.EventType.CLICK, this.onChangeModeSV, this);
         this.$ghbtn.on(Button.EventType.CLICK, this.onChangeModeGH, this);
@@ -152,6 +170,16 @@ export class ListTestcase extends Component {
         this.$ghlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$gvlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
         this.$tvlist.node.off(EVENT_TYPE.DATA_CHANGED, this.onDataChanged, this);
+        this.$hlist.node.off(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$hlist.node.off(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
+        this.$vlist.node.off(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$vlist.node.off(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
+        this.$ghlist.node.off(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$ghlist.node.off(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
+        this.$gvlist.node.off(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$gvlist.node.off(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
+        this.$tvlist.node.off(EVENT_TYPE.ITEM_SHOW, this.onItemCountChanged, this);
+        this.$tvlist.node.off(EVENT_TYPE.ITEM_HIDE, this.onItemCountChanged, this);
         this.$shbtn.off(Button.EventType.CLICK, this.onChangeModeSH, this);
         this.$svbtn.off(Button.EventType.CLICK, this.onChangeModeSV, this);
         this.$ghbtn.off(Button.EventType.CLICK, this.onChangeModeGH, this);
@@ -161,6 +189,11 @@ export class ListTestcase extends Component {
         this.$grbtn.off(Button.EventType.CLICK, this.onRemoveItem, this);
         this.$startbtn.off(Button.EventType.CLICK, this.onScrollToStart, this);
         this.$endbtn.off(Button.EventType.CLICK, this.onSrollToEnd, this);
+    }
+
+    private onItemCountChanged(index: number) {
+        const list = this.getListByMode();
+        this.$items.string = `节点数：${list.realItemCount}`;
     }
 
     private onDataChanged() {
