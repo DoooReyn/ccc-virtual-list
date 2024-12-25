@@ -40,15 +40,11 @@ export default class VirtualItem extends ReusableObject {
      * 检查子项边界
      * @param bounds 容器边界
      */
-    public checkBounds(bounds: Rect) {
+    public updateBounds(bounds?: Rect) {
         if (this.c && !this.m) return false;
+        bounds ??= this.l.viewBounds;
         this._r.set(this.x + this.l.container.position.x, this.y + this.l.container.position.y, this.w, this.h);
         return this._r.intersects(bounds);
-    }
-
-    /** 检查子项边界 */
-    public checkItemBounds() {
-        this.checkBounds(this.l.viewBounds) ? this.l.onItemShow(this) : this.l.onItemHide(this);
     }
 
     /** 重置 */
