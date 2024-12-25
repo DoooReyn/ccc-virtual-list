@@ -416,28 +416,6 @@ export abstract class VirtualList extends Component {
         return null;
     }
 
-    /** 检查列表空白提示 */
-    private inspectEmptyTip() {
-        if (this.$tipEmpty) {
-            this.$tipEmpty.active = this._dataSource && this._dataSource.length == 0;
-        }
-    }
-
-    /** 绘制容器边界 */
-    private drawContainerBounds() {
-        if (this.$debugDraw) {
-            const { width, height } = this.containerSize;
-            const pos = this.horizontal ? new Vec3(0, -height / 2) : new Vec3(-width / 2, -height);
-            const containerG = this._container.getComponent(Graphics);
-            containerG.clear();
-            containerG.lineWidth = 2;
-            containerG.strokeColor = new Color(255, 0, 255);
-            containerG.fillColor = new Color(0, 0, 0, 25);
-            containerG.fillRect(pos.x, pos.y, width, height);
-            containerG.stroke();
-        }
-    }
-
     /**
      * 获取子项的索引
      * @param item 子项
@@ -445,239 +423,6 @@ export abstract class VirtualList extends Component {
      */
     public getItemIndex(item: Node) {
         return item[VIRTUAL_ID_TAG] ?? -1;
-    }
-
-    /**
-     * 如果目标是自身则停止传递事件
-     * @param event 事件
-     */
-    private stopPropagationIfTargetIsMe(event: Event): void {
-        if (event.eventPhase === Event.AT_TARGET && event.target === this.node) {
-            event.propagationStopped = true;
-        }
-    }
-
-    /** 开始模拟触摸取消事件 */
-    private startSimulation(e: EventTouch) {
-        if (e.target instanceof Node) {
-            const cancelEvent = new EventTouch(e.getTouches(), e.bubbles, Input.EventType.TOUCH_CANCEL);
-            cancelEvent.touch = e.touch;
-            cancelEvent.simulate = true;
-            e.target.dispatchEvent(cancelEvent);
-        }
-    }
-
-    /** 取消模拟触摸取消事件 */
-    private cancelSimulation() {
-        if (this._simulatelHandler) {
-            this.unschedule(this._simulatelHandler);
-            this._simulatelHandler = null;
-        }
-    }
-
-    /** 应用回弹（起始处） */
-    private handleBounceStart() {
-        if (this.$bouncable) {
-            this.scrollToStart(this.bouncableTime);
-            this.node.emit(EVENT_TYPE.BOUNCE_START);
-        } else {
-            this.stopScroll();
-            this._container.setPosition(this.startPos.x, this.startPos.y);
-            this.updateVirtualBounds();
-        }
-    }
-
-    /** 应用回弹（结束处） */
-    private handleBounceEnd() {
-        if (this.$bouncable) {
-            this.scrollToEnd(this.bouncableTime);
-            this.node.emit(EVENT_TYPE.BOUNCE_END);
-        } else {
-            this.stopScroll();
-            this._container.setPosition(this.endPos.x, this.endPos.y);
-            this.updateVirtualBounds();
-        }
-    }
-
-    /** 处理回弹 */
-    private handleBounce(position?: Vec3) {
-        const type = this.getBounceType(position);
-        if (type == BounceType.START) {
-            this.handleBounceStart();
-        } else if (type == BounceType.END) {
-            this.handleBounceEnd();
-        } else {
-            this.updateVirtualBounds();
-        }
-    }
-
-    /**
-     * 获取回弹类型
-     * @param position 可选参数，默认为容器位置
-     * @returns 回弹类型，可以是 BounceType.START、BounceType.END 或 BounceType.NONE
-     */
-    private getBounceType(position?: Vec3) {
-        position ??= this._container.position;
-        const isHorizontal = this.horizontal;
-        if (isHorizontal ? position.x > this.startPos.x : position.y < this.startPos.y) return BounceType.START;
-        if (isHorizontal ? position.x < this.endPos.x : position.y > this.endPos.y) return BounceType.END;
-        return BounceType.NONE;
-    }
-
-    /**
-     * 指定位置是否会触发回弹
-     * @param position 可选参数，默认为容器位置
-     * @returns
-     */
-    private isBounce(position?: Vec3) {
-        const type = this.getBounceType(position);
-        return type != BounceType.NONE;
-    }
-
-    /** 刷新列表 */
-    private refreshView() {
-        const vc = this._vitems.length;
-        const dc = this._dataSource.length;
-        const count = vc - dc;
-        if (count > 0) {
-            // 清理虚拟子项【虚拟子项多了】
-            for (let i = vc - 1; i >= dc; i--) {
-                this.recycleVirtualItem(i);
-            }
-        }
-        if (count < 0) {
-            // 增加虚拟子项【虚拟子项不足】
-            for (let i = vc, l = -count + vc; i < l; i++) {
-                this.acquireVirtualItem(i);
-            }
-        }
-        // 重置虚拟子项
-        this.buildVirtualItems();
-    }
-
-    /**
-     * 创建虚拟子项
-     * @param index 索引
-     */
-    protected acquireVirtualItem(index: number) {
-        const [w, h] = this.preGetItemSize(index);
-        const vitem = VirtualItemPool.inst.acqruire<VirtualItem>(VirtualItem);
-        vitem.l = this;
-        vitem.w = w;
-        vitem.h = h;
-        vitem.i = index;
-        this._vitems.push(vitem);
-    }
-
-    /**
-     * 回收虚拟子项
-     * @param index 索引
-     */
-    protected recycleVirtualItem(index: number) {
-        const vitem = this._vitems[index];
-        if (vitem) {
-            const ritem = this.getItemAt(index, false);
-            if (ritem) this.recycleItem(ritem);
-            this._vitems.splice(index, 1);
-            VirtualItemPool.inst.recycle(vitem);
-        }
-    }
-
-    /** 构建虚拟子项 */
-    protected buildVirtualItems() {
-        if (this.singleLayout) {
-            this.buildSingleLayout();
-        } else {
-            this.buildGridLayout();
-        }
-        this.onVirtualItemBuilt();
-        const size = this.calculateSize();
-        this._containerTransform.setContentSize(size);
-        this.drawContainerBounds();
-        if (this.atStart) {
-            this._container.setPosition(this.startPos);
-        } else if (this.atEnd) {
-            this._container.setPosition(this.endPos);
-        }
-        this.updateVirtualBounds();
-    }
-
-    /** 构建单项布局 */
-    private buildSingleLayout() {
-        const hor = this.horizontal;
-        let startX: number = 0;
-        let startY: number = 0;
-        if (this._dataSource && this._dataSource.length > 0) {
-            let item: VirtualItem;
-            for (let i = 0, l = this._dataSource.length; i < l; i++) {
-                item = this._vitems[i];
-                item.i = i;
-                if (item.c && !item.m) {
-                    if (hor) {
-                        item.x = startX;
-                        item.y = 0;
-                    } else {
-                        item.x = 0;
-                        item.y = startY;
-                    }
-                } else {
-                    if (hor) {
-                        item.x = startX;
-                        item.y = 0;
-                        startX += item.w + this.$spacing;
-                    } else {
-                        startY -= item.h;
-                        item.x = 0;
-                        item.y = startY;
-                        startY -= this.$spacing;
-                    }
-                }
-            }
-        }
-    }
-
-    /** 构建网格布局 */
-    private buildGridLayout() {
-        if (this._dataSource && this._dataSource.length > 0) {
-            let startX: number = 0;
-            let startY: number = 0;
-            const hor = this.horizontal;
-            const count = this._dataSource.length;
-            const grids = this.grids;
-            const rows = Math.ceil(count / grids);
-            const is = this.getItemSize(0);
-            const size = new Size(is[0], is[1]);
-            const spacing = this.$spacing;
-            const vitems = this._vitems;
-            hor ? (size.height = this._minHeight) : (size.width = this._minWidth);
-            for (let r = 0, i = 0, c = 0, item: VirtualItem; r < rows; r++) {
-                if (hor) {
-                    startY = 0;
-                } else {
-                    startX = 0;
-                    startY -= size.height;
-                }
-                for (c = 0; c < grids; c++) {
-                    i = r * grids + c;
-                    if (i >= count) return;
-                    item = vitems[i];
-                    item.i = i;
-                    if (hor) {
-                        item.x = startX;
-                        item.y = startY + size.height / 2 - is[1] / 2 - ((size.height - is[1]) / (grids - 1)) * c;
-                    } else {
-                        item.x = startX - size.width / 2 + is[0] / 2 + ((size.width - is[0]) / (grids - 1)) * c;
-                        item.y = startY;
-                    }
-                }
-                if (hor) {
-                    startX += is[0];
-                    startX += spacing;
-                } else {
-                    startY -= spacing;
-                }
-            }
-        }
     }
 
     /**
@@ -715,19 +460,6 @@ export abstract class VirtualList extends Component {
             this._containerTransform.setContentSize(this.calculateSize());
             this.drawContainerBounds();
             this.scrollToStart();
-        }
-    }
-
-    /**
-     * 预取子项尺寸
-     * @param index 索引
-     * @returns [number, number]
-     */
-    protected preGetItemSize(index: number): [number, number] {
-        if (this._vitems[index]) {
-            return [this._vitems[index].w, this._vitems[index].h];
-        } else {
-            return this.getItemSize(index);
         }
     }
 
@@ -874,6 +606,371 @@ export abstract class VirtualList extends Component {
         this.insertAt(this.count, item);
     }
 
+    /** 停止滚动 */
+    public stopScroll() {
+        Tween.stopAllByTarget(this._container);
+        this.unschedule(this.updateScrollMode);
+        this._scrolling = false;
+        this._scrollDelta = 0;
+        this._animating = false;
+        this._scrollOffset.set(0, 0);
+    }
+
+    /**
+     * 滚动到指定索引
+     * @param index 索引
+     * @param delta 动画时间
+     */
+    public scrollToIndex(index: number, delta: number = 0) {
+        if (index == 0) {
+            this.scrollToStart(delta);
+            return;
+        }
+
+        if (index == this.count - 1) {
+            this.scrollToEnd(delta);
+            return;
+        }
+
+        const pos = this.getVirtualPositionAt(index);
+        if (pos) {
+            this._toIndex = index;
+            this._scrollMode = LIST_SCROLL_MODE.INDEX;
+            this.scrollTo(pos, delta);
+        }
+    }
+
+    /**
+     * 滚动到开始处
+     * @param delta 动画时间
+     */
+    public scrollToStart(delta: number = 0) {
+        this._scrollMode = LIST_SCROLL_MODE.START;
+        this._toIndex = 0;
+        this.scrollTo(this.startPos, delta);
+    }
+
+    /**
+     * 滚动到结束处
+     * @param delta 动画时间
+     */
+    public scrollToEnd(delta: number = 0) {
+        this._scrollMode = LIST_SCROLL_MODE.END;
+        this._toIndex = this.count - 1;
+        this.scrollTo(this.endPos, delta);
+    }
+
+    /**
+     * 是否停在指定索引位置
+     * @param index 索引
+     * @returns
+     */
+    public isStopAtIndex(index: number) {
+        const pos = this.getVirtualPositionAt(index);
+        return pos && this._container.position.equals(pos);
+    }
+
+    /** 是否停在起始位置 */
+    public isStopAtStart() {
+        return this._container.position.equals(this.startPos);
+    }
+
+    /** 是否停在结束位置 */
+    public isStopAtEnd() {
+        return this._container.position.equals(this.endPos);
+    }
+
+    /**
+     * 获取虚拟子项位置
+     * @param index 索引
+     * @returns
+     */
+    public getVirtualPositionAt(index: number) {
+        const vitem = this._vitems[index];
+        if (vitem) {
+            const pos = vitem.position;
+            if (this.horizontal) {
+                pos.x = -pos.x - this._minWidth / 2 + this.$spacing / 2 + vitem.w / 2;
+                pos.x = Math.max(pos.x, -this.containerSize.width + this.minWidth / 2 + this.$spacing / 2);
+                if (this.gridLayout) pos.y = this._startPos.y;
+            } else {
+                pos.y = -pos.y - vitem.h / 2 - this.$spacing / 2 + this._minHeight / 2;
+                pos.y = Math.min(pos.y, this.containerSize.height - this._minHeight / 2 - this.$spacing / 2);
+                if (this.gridLayout) pos.x = this._startPos.x;
+            }
+            return pos;
+        }
+        return null;
+    }
+
+    /** 检查列表空白提示 */
+    private inspectEmptyTip() {
+        if (this.$tipEmpty) {
+            this.$tipEmpty.active = this._dataSource && this._dataSource.length == 0;
+        }
+    }
+
+    /** 绘制容器边界 */
+    private drawContainerBounds() {
+        if (this.$debugDraw) {
+            const { width, height } = this.containerSize;
+            const pos = this.horizontal ? new Vec3(0, -height / 2) : new Vec3(-width / 2, -height);
+            const containerG = this._container.getComponent(Graphics);
+            containerG.clear();
+            containerG.lineWidth = 2;
+            containerG.strokeColor = new Color(255, 0, 255);
+            containerG.fillColor = new Color(0, 0, 0, 25);
+            containerG.fillRect(pos.x, pos.y, width, height);
+            containerG.stroke();
+        }
+    }
+
+    /**
+     * 如果目标是自身则停止传递事件
+     * @param event 事件
+     */
+    private stopPropagationIfTargetIsMe(event: Event): void {
+        if (event.eventPhase === Event.AT_TARGET && event.target === this.node) {
+            event.propagationStopped = true;
+        }
+    }
+
+    /** 开始模拟触摸取消事件 */
+    private startSimulation(e: EventTouch) {
+        if (e.target instanceof Node) {
+            const cancelEvent = new EventTouch(e.getTouches(), e.bubbles, Input.EventType.TOUCH_CANCEL);
+            cancelEvent.touch = e.touch;
+            cancelEvent.simulate = true;
+            e.target.dispatchEvent(cancelEvent);
+        }
+    }
+
+    /** 取消模拟触摸取消事件 */
+    private cancelSimulation() {
+        if (this._simulatelHandler) {
+            this.unschedule(this._simulatelHandler);
+            this._simulatelHandler = null;
+        }
+    }
+
+    /** 应用回弹（起始处） */
+    private handleBounceStart() {
+        if (this.$bouncable) {
+            this.scrollToStart(this.bouncableTime);
+            this.node.emit(EVENT_TYPE.BOUNCE_START);
+        } else {
+            this.stopScroll();
+            this._container.setPosition(this.startPos.x, this.startPos.y);
+            this.updateVirtualBounds();
+        }
+    }
+
+    /** 应用回弹（结束处） */
+    private handleBounceEnd() {
+        if (this.$bouncable) {
+            this.scrollToEnd(this.bouncableTime);
+            this.node.emit(EVENT_TYPE.BOUNCE_END);
+        } else {
+            this.stopScroll();
+            this._container.setPosition(this.endPos.x, this.endPos.y);
+            this.updateVirtualBounds();
+        }
+    }
+
+    /** 处理回弹 */
+    private handleBounce(position?: Vec3) {
+        const type = this.getBounceType(position);
+        if (type == BounceType.START) {
+            this.handleBounceStart();
+        } else if (type == BounceType.END) {
+            this.handleBounceEnd();
+        } else {
+            this.updateVirtualBounds();
+        }
+    }
+
+    /**
+     * 获取回弹类型
+     * @param position 可选参数，默认为容器位置
+     * @returns 回弹类型，可以是 BounceType.START、BounceType.END 或 BounceType.NONE
+     */
+    private getBounceType(position?: Vec3) {
+        position ??= this._container.position;
+        const isHorizontal = this.horizontal;
+        if (isHorizontal ? position.x > this.startPos.x : position.y < this.startPos.y) return BounceType.START;
+        if (isHorizontal ? position.x < this.endPos.x : position.y > this.endPos.y) return BounceType.END;
+        return BounceType.NONE;
+    }
+
+    /**
+     * 指定位置是否会触发回弹
+     * @param position 可选参数，默认为容器位置
+     * @returns
+     */
+    protected isBounce(position?: Vec3) {
+        const type = this.getBounceType(position);
+        return type != BounceType.NONE;
+    }
+
+    /** 刷新列表 */
+    private refreshView() {
+        const vc = this._vitems.length;
+        const dc = this._dataSource.length;
+        const count = vc - dc;
+        if (count > 0) {
+            // 清理虚拟子项【虚拟子项多了】
+            for (let i = vc - 1; i >= dc; i--) {
+                this.recycleVirtualItem(i);
+            }
+        }
+        if (count < 0) {
+            // 增加虚拟子项【虚拟子项不足】
+            for (let i = vc, l = -count + vc; i < l; i++) {
+                this.acquireVirtualItem(i);
+            }
+        }
+        // 重置虚拟子项
+        this.buildVirtualItems();
+    }
+
+    /**
+     * 创建虚拟子项
+     * @param index 索引
+     */
+    private acquireVirtualItem(index: number) {
+        const [w, h] = this.preGetItemSize(index);
+        const vitem = VirtualItemPool.inst.acqruire<VirtualItem>(VirtualItem);
+        vitem.l = this;
+        vitem.w = w;
+        vitem.h = h;
+        vitem.i = index;
+        this._vitems.push(vitem);
+    }
+
+    /**
+     * 回收虚拟子项
+     * @param index 索引
+     */
+    private recycleVirtualItem(index: number) {
+        const vitem = this._vitems[index];
+        if (vitem) {
+            const ritem = this.getItemAt(index, false);
+            if (ritem) this.recycleItem(ritem);
+            this._vitems.splice(index, 1);
+            VirtualItemPool.inst.recycle(vitem);
+        }
+    }
+
+    /** 构建虚拟子项 */
+    private buildVirtualItems() {
+        if (this.singleLayout) {
+            this.buildSingleLayout();
+        } else {
+            this.buildGridLayout();
+        }
+        this.onVirtualItemBuilt();
+        const size = this.calculateSize();
+        this._containerTransform.setContentSize(size);
+        this.drawContainerBounds();
+        if (this.atStart) {
+            this._container.setPosition(this.startPos);
+        } else if (this.atEnd) {
+            this._container.setPosition(this.endPos);
+        }
+        this.updateVirtualBounds();
+    }
+
+    /** 构建单项布局 */
+    private buildSingleLayout() {
+        const hor = this.horizontal;
+        let startX: number = 0;
+        let startY: number = 0;
+        if (this._dataSource && this._dataSource.length > 0) {
+            let item: VirtualItem;
+            for (let i = 0, l = this._dataSource.length; i < l; i++) {
+                item = this._vitems[i];
+                item.i = i;
+                if (item.c && !item.m) {
+                    if (hor) {
+                        item.x = startX;
+                        item.y = 0;
+                    } else {
+                        item.x = 0;
+                        item.y = startY;
+                    }
+                } else {
+                    if (hor) {
+                        item.x = startX;
+                        item.y = 0;
+                        startX += item.w + this.$spacing;
+                    } else {
+                        startY -= item.h;
+                        item.x = 0;
+                        item.y = startY;
+                        startY -= this.$spacing;
+                    }
+                }
+            }
+        }
+    }
+
+    /** 构建网格布局 */
+    private buildGridLayout() {
+        if (this._dataSource && this._dataSource.length > 0) {
+            let startX: number = 0;
+            let startY: number = 0;
+            const hor = this.horizontal;
+            const count = this._dataSource.length;
+            const grids = this.grids;
+            const rows = Math.ceil(count / grids);
+            const is = this.getItemSize(0);
+            const size = new Size(is[0], is[1]);
+            const spacing = this.$spacing;
+            const vitems = this._vitems;
+            hor ? (size.height = this._minHeight) : (size.width = this._minWidth);
+            for (let r = 0, i = 0, c = 0, item: VirtualItem; r < rows; r++) {
+                if (hor) {
+                    startY = 0;
+                } else {
+                    startX = 0;
+                    startY -= size.height;
+                }
+                for (c = 0; c < grids; c++) {
+                    i = r * grids + c;
+                    if (i >= count) return;
+                    item = vitems[i];
+                    item.i = i;
+                    if (hor) {
+                        item.x = startX;
+                        item.y = startY + size.height / 2 - is[1] / 2 - ((size.height - is[1]) / (grids - 1)) * c;
+                    } else {
+                        item.x = startX - size.width / 2 + is[0] / 2 + ((size.width - is[0]) / (grids - 1)) * c;
+                        item.y = startY;
+                    }
+                }
+                if (hor) {
+                    startX += is[0];
+                    startX += spacing;
+                } else {
+                    startY -= spacing;
+                }
+            }
+        }
+    }
+
+    /**
+     * 预取子项尺寸
+     * @param index 索引
+     * @returns [number, number]
+     */
+    protected preGetItemSize(index: number): [number, number] {
+        if (this._vitems[index]) {
+            return [this._vitems[index].w, this._vitems[index].h];
+        } else {
+            return this.getItemSize(index);
+        }
+    }
+
     /** 计算容器尺寸 */
     private calculateSize() {
         return this.singleLayout ? this.calculateSingleSize() : this.calculateGridSize();
@@ -939,59 +1036,6 @@ export abstract class VirtualList extends Component {
         }
     }
 
-    /** 停止滚动 */
-    public stopScroll() {
-        Tween.stopAllByTarget(this._container);
-        this.unschedule(this.updateScrollMode);
-        this._scrolling = false;
-        this._scrollDelta = 0;
-        this._animating = false;
-        this._scrollOffset.set(0, 0);
-    }
-
-    /**
-     * 是否停在指定索引位置
-     * @param index 索引
-     * @returns
-     */
-    private isStopAtIndex(index: number) {
-        const pos = this.getVirtualPositionAt(index);
-        return pos && this._container.position.equals(pos);
-    }
-
-    /** 是否停在起始位置 */
-    private isStopAtStart() {
-        return this._container.position.equals(this.startPos);
-    }
-
-    /** 是否停在结束位置 */
-    private isStopAtEnd() {
-        return this._container.position.equals(this.endPos);
-    }
-
-    /**
-     * 获取虚拟子项位置
-     * @param index 索引
-     * @returns
-     */
-    private getVirtualPositionAt(index: number) {
-        const vitem = this._vitems[index];
-        if (vitem) {
-            const pos = vitem.position;
-            if (this.horizontal) {
-                pos.x = -pos.x - this._minWidth / 2 + this.$spacing / 2 + vitem.w / 2;
-                pos.x = Math.max(pos.x, -this.containerSize.width + this.minWidth / 2 + this.$spacing / 2);
-                if (this.gridLayout) pos.y = this._startPos.y;
-            } else {
-                pos.y = -pos.y - vitem.h / 2 - this.$spacing / 2 + this._minHeight / 2;
-                pos.y = Math.min(pos.y, this.containerSize.height - this._minHeight / 2 - this.$spacing / 2);
-                if (this.gridLayout) pos.x = this._startPos.x;
-            }
-            return pos;
-        }
-        return null;
-    }
-
     /** 检查是否滚动到指定位置 */
     private updateScrollMode() {
         let ok: boolean | undefined;
@@ -1027,7 +1071,7 @@ export abstract class VirtualList extends Component {
      * @param position 目标位置
      * @param delta 动画时间
      */
-    private scrollTo(position: Vec3, delta: number = 0) {
+    protected scrollTo(position: Vec3, delta: number = 0) {
         if (this.isMinSize) {
             position = this.startPos;
         }
@@ -1067,50 +1111,6 @@ export abstract class VirtualList extends Component {
         } else {
             tween(this._container).by(delta, { position: loc }, { easing: "quadIn" }).call(end).start();
         }
-    }
-
-    /**
-     * 滚动到指定索引
-     * @param index 索引
-     * @param delta 动画时间
-     */
-    public scrollToIndex(index: number, delta: number = 0) {
-        if (index == 0) {
-            this.scrollToStart(delta);
-            return;
-        }
-
-        if (index == this.count - 1) {
-            this.scrollToEnd(delta);
-            return;
-        }
-
-        const pos = this.getVirtualPositionAt(index);
-        if (pos) {
-            this._toIndex = index;
-            this._scrollMode = LIST_SCROLL_MODE.INDEX;
-            this.scrollTo(pos, delta);
-        }
-    }
-
-    /**
-     * 滚动到开始处
-     * @param delta 动画时间
-     */
-    public scrollToStart(delta: number = 0) {
-        this._scrollMode = LIST_SCROLL_MODE.START;
-        this._toIndex = 0;
-        this.scrollTo(this.startPos, delta);
-    }
-
-    /**
-     * 滚动到结束处
-     * @param delta 动画时间
-     */
-    public scrollToEnd(delta: number = 0) {
-        this._scrollMode = LIST_SCROLL_MODE.END;
-        this._toIndex = this.count - 1;
-        this.scrollTo(this.endPos, delta);
     }
 
     /**
