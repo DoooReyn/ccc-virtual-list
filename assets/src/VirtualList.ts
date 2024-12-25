@@ -969,11 +969,7 @@ export abstract class VirtualList extends Component {
 
     /** 计算容器尺寸 */
     private calculateSize() {
-        if (this.singleLayout) {
-            return this.calculateSingleSize();
-        } else {
-            return this.calculateGridSize();
-        }
+        return this.singleLayout ? this.calculateSingleSize() : this.calculateGridSize();
     }
 
     /** 计算单项布局尺寸 */
@@ -987,25 +983,14 @@ export abstract class VirtualList extends Component {
         const count = this.count;
         for (let i = 0; i < count; i++) {
             size = this.preGetItemSize(i);
-            if (hor) {
-                if (this._vitems[i].m || (!this._vitems[i].m && !this._vitems[i].c)) {
-                    width += size[0];
-                    uncollapses++;
-                }
-            } else {
-                if (this._vitems[i].m || (!this._vitems[i].m && !this._vitems[i].c)) {
-                    height += size[1];
-                    uncollapses++;
-                }
+            if (this._vitems[i].m || (!this._vitems[i].m && !this._vitems[i].c)) {
+                hor ? (width += size[0]) : (height += size[1]);
+                uncollapses++;
             }
         }
         if (count > 0) {
             const extraSpacing = Math.max(0, uncollapses - 1) * spacing;
-            if (hor) {
-                width += extraSpacing;
-            } else {
-                height += extraSpacing;
-            }
+            hor ? (width += extraSpacing) : (height += extraSpacing);
         }
         width = Math.max(width, this._minWidth);
         height = Math.max(height, this._minHeight);
