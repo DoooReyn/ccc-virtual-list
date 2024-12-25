@@ -116,8 +116,6 @@ export abstract class VirtualList extends Component {
     private _startPos: Vec3 = null;
     /** 触摸落下计时点 */
     private _dropAt: number = 0;
-    /** 触摸松开计时点 */
-    private _leaveAt: number = 0;
     /** 触摸落下位置 */
     private _dropPos: Vec2 = new Vec2();
     /** 触摸松开位置 */
@@ -1175,17 +1173,17 @@ export abstract class VirtualList extends Component {
         this.cancelSimulation();
         if (this.isBounce()) return this.handleBounce();
         if (this.$inertia) {
-            this._leaveAt = Date.now();
             this._leavePos.x = e.getLocationX();
             this._leavePos.y = e.getLocationY();
-            const delta = this._leaveAt - this._dropAt;
+            const delta = Date.now() - this._dropAt;
             if (this.horizontal && Math.abs(this._leavePos.x - this._dropPos.x) < this.$scrollSpan) return;
             if (this.vertical && Math.abs(this._leavePos.y - this._dropPos.y) < this.$scrollSpan) return;
-            if (delta > this.$scrollDelta) return;
-            this._scrolling = true;
-            this._scrollDelta = delta / 1000;
-            this._scrollOffset.x = this._leavePos.x - this._dropPos.x;
-            this._scrollOffset.y = this._leavePos.y - this._dropPos.y;
+            if (delta <= this.$scrollDelta) {
+                this._scrolling = true;
+                this._scrollDelta = delta / 1000;
+                this._scrollOffset.x = this._leavePos.x - this._dropPos.x;
+                this._scrollOffset.y = this._leavePos.y - this._dropPos.y;
+            }
         }
     }
 
