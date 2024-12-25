@@ -1001,8 +1001,7 @@ export abstract class VirtualList extends Component {
     private calculateGridSize() {
         const hor = this.horizontal;
         const spacing = this.$spacing;
-        const count = this.count;
-        const row = Math.ceil(count / this.grids);
+        const row = Math.ceil(this.count / this.grids);
         let [width, height] = this.getItemSize(0);
         if (hor) {
             width = width * row + (row - 1) * spacing;
