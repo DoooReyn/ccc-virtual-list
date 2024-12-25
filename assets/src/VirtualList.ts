@@ -271,30 +271,6 @@ export abstract class VirtualList extends Component {
         return this.containerSize.width == this._minWidth && this.containerSize.height == this._minHeight;
     }
 
-    /**
-     * 获取索引处的数据
-     * @param index 索引
-     * @returns
-     */
-    public getDataAt(index: number) {
-        if (this._dataSource && index >= 0 && index < this._dataSource.length) {
-            return this._dataSource[index];
-        }
-        return null;
-    }
-
-    /**
-     * 获取索引处的虚拟子项
-     * @param index 索引
-     * @returns
-     */
-    public getVirtualItemAt(index: number) {
-        if (this._vitems && index >= 0 && index < this._vitems.length) {
-            return this._vitems[index];
-        }
-        return null;
-    }
-
     /** 可视区尺寸 */
     public get viewSize() {
         return new Size(this._minWidth, this._minHeight);
@@ -313,6 +289,22 @@ export abstract class VirtualList extends Component {
     /** 边距 */
     public get padding() {
         return { l: this.$paddingLeft, r: this.$paddingRight, t: this.$paddingTop, b: this.$paddingBottom };
+    }
+
+    /**
+     * 是否超大尺寸的容器
+     * @warning 默认当容器尺寸大于最小尺寸的20倍时，将其视为超大尺寸容器
+     * @warning 在此情况下，滚动动画会做一些折中处理，否则计算量会非常大
+     * @warning 如果不希望使用超大尺寸方案，可以重写此方法，让它返回 false 即可
+     * @info 子类可以重写以适应需要
+     * @returns
+     */
+    protected get isHugeSize() {
+        return (
+            (this.horizontal
+                ? this._containerTransform.width / this._minWidth
+                : this._containerTransform.height / this._minHeight) > 20
+        );
     }
 
     /**
@@ -415,6 +407,30 @@ export abstract class VirtualList extends Component {
         if (this._animating) {
             this.updateVirtualBounds();
         }
+    }
+
+    /**
+     * 获取索引处的数据
+     * @param index 索引
+     * @returns
+     */
+    public getDataAt(index: number) {
+        if (this._dataSource && index >= 0 && index < this._dataSource.length) {
+            return this._dataSource[index];
+        }
+        return null;
+    }
+
+    /**
+     * 获取索引处的虚拟子项
+     * @param index 索引
+     * @returns
+     */
+    public getVirtualItemAt(index: number) {
+        if (this._vitems && index >= 0 && index < this._vitems.length) {
+            return this._vitems[index];
+        }
+        return null;
     }
 
     /** 检查列表空白提示 */
@@ -1197,22 +1213,6 @@ export abstract class VirtualList extends Component {
             this._scrollMode = LIST_SCROLL_MODE.INDEX;
             this.scrollTo(pos, delta);
         }
-    }
-
-    /**
-     * 是否超大尺寸的容器
-     * @warning 默认当容器尺寸大于最小尺寸的20倍时，将其视为超大尺寸容器
-     * @warning 在此情况下，滚动动画会做一些折中处理，否则计算量会非常大
-     * @warning 如果不希望使用超大尺寸方案，可以重写此方法，让它返回 false 即可
-     * @info 子类可以重写以适应需要
-     * @returns
-     */
-    protected get isHugeSize() {
-        return (
-            (this.horizontal
-                ? this._containerTransform.width / this._minWidth
-                : this._containerTransform.height / this._minHeight) > 20
-        );
     }
 
     /**
