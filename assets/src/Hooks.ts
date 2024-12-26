@@ -8,17 +8,24 @@ class Hook {
      * @param thisArg 钩子方法的 this 指向
      * @param once 是否只执行一次
      */
-    public constructor(protected hook: Function, protected thisArg: any, protected once: boolean = false) {}
+    public constructor(
+        protected hook: Function,
+        protected thisArg: any,
+        protected once: boolean = false,
+        protected preArgs?: any[]
+    ) {}
 
     /**
      * 设置钩子
      * @param hook 钩子方法
      * @param thisArg 钩子方法的 this 指向
      * @param once 是否只执行一次
+     * @param preArgs 前置参数列表
      */
-    public set(hook: Function, thisArg: any, once: boolean = false) {
+    public set(hook: Function, thisArg: any, once: boolean = false, preArgs?: any[]) {
         this.hook = hook;
         this.thisArg = thisArg;
+        this.preArgs = preArgs;
         this.once = once;
     }
 
@@ -32,10 +39,15 @@ class Hook {
         return this.hook === hook && this.thisArg === thisArg;
     }
 
+    /** 获取运行时入参 */
+    protected getArgs(args: any[]) {
+        return (this.preArgs || []).concat(args);
+    }
+
     /** 执行钩子 */
     public run() {
         if (!this._toDelete) {
-            this.hook.apply(this.thisArg);
+            this.hook.apply(this.thisArg, this.getArgs);
             if (this.once) {
                 this._toDelete = true;
             }
@@ -48,7 +60,7 @@ class Hook {
      */
     public runWith(...args: any[]) {
         if (!this._toDelete) {
-            this.hook.apply(this.thisArg, args);
+            this.hook.apply(this.thisArg, this.getArgs(args));
             if (this.once) {
                 this._toDelete = true;
             }
@@ -77,9 +89,10 @@ export default class Hooks {
      * @param hook 钩子方法
      * @param thisArg 钩子方法的 this 指向
      * @param once 是否只执行一次
+     * @param preArgs 前置参数列表
      */
-    public add(hook: Function, thisArg: any, once: boolean = false) {
-        this._hooks.push(new Hook(hook, thisArg, once));
+    public add(hook: Function, thisArg: any, once: boolean = false, preArgs?: any[]) {
+        this._hooks.push(new Hook(hook, thisArg, once, preArgs));
     }
 
     /**
@@ -121,5 +134,10 @@ export default class Hooks {
                 this._hooks.splice(i, 1);
             }
         }
+    }
+
+    /** 数量 */
+    public get size() {
+        return this._hooks.length;
     }
 }
